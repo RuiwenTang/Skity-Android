@@ -11,19 +11,18 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mView = new SkityDemoView(this);
-//        setContentView(R.layout.activity_main2);
          setContentView(mView);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-       // mView.onPause();
+        mView.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // mView.onResume();
+         mView.onResume();
     }
 }

@@ -4,7 +4,7 @@ public class Renderer {
     private long nativeHandle = 0;
 
     static {
-        System.loadLibrary("skity_wrapper");
+        System.loadLibrary("skity_android");
     }
 
 
