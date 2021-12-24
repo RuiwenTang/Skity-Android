@@ -1,0 +1,3 @@
+[submodule "skity/external"]
+	path = skity/external
+	url = git@github.com:RuiwenTang/Skity.git
