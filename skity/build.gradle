@@ -4,6 +4,7 @@ plugins {
 
 android {
     compileSdk 31
+    ndkVersion = "21.3.6528147"
 
     defaultConfig {
         minSdk 28
@@ -13,12 +14,47 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
+
+        ndk {
+            abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+            version "3.18.1"
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            externalNativeBuild {
+                cmake {
+                    arguments '-DCMAKE_BUILD_TYPE=Release',
+                            '-DCMAKE_SYSTEM_NAME=Android',
+                            '-DANDROID_PLATFORM=android-29',
+                            '-DANDROID_STL=c++_shared',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_LD=lld'
+                }
+            }
+        }
+
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DCMAKE_BUILD_TYPE=Debug',
+                            '-DCMAKE_SYSTEM_NAME=Android',
+                            '-DANDROID_PLATFORM=android-29',
+                            '-DANDROID_STL=c++_shared',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_LD=lld'
+                }
+            }
         }
     }
     compileOptions {
