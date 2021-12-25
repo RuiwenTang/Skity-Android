@@ -8,6 +8,11 @@ set(BUILD_TEST OFF)
 set(VULKAN_BACKEND ON)
 set(ENABLE_LOG OFF)
 
+add_subdirectory(third_party/freetype)
+
+set(FREETYPE_FOUND True)
+set(FREETYPE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/freetype/include)
+
 add_subdirectory(external)
 
 add_library(skity_android SHARED

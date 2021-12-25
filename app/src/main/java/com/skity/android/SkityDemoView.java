@@ -28,7 +28,10 @@ public class SkityDemoView extends GLSurfaceView {
 
         @Override
         public void onSurfaceCreated(GL10 gl10, EGLConfig eglConfig) {
-            mRender.init(mView.getWidth(), mView.getHeight(), (int) mView.getContext().getResources().getDisplayMetrics().density);
+            mRender.init(mView.getWidth()
+                    , mView.getHeight()
+                    , (int) mView.getContext().getResources().getDisplayMetrics().density
+                    , mView.getContext());
         }
 
         @Override

@@ -1,5 +1,8 @@
 package com.skity.graphic;
 
+import android.content.Context;
+import android.content.res.AssetManager;
+
 public class Renderer {
     private long nativeHandle = 0;
 
@@ -8,8 +11,9 @@ public class Renderer {
     }
 
 
-    public void init(int width, int height, int density) {
+    public void init(int width, int height, int density, Context context) {
         nativeHandle = nativeInit(width, height, density);
+        nativeLoadDefaultAssets(nativeHandle, context.getAssets());
     }
 
     public void draw() {
@@ -21,6 +25,8 @@ public class Renderer {
     }
 
     private native long nativeInit(int width, int height, int density);
+
+    private native void nativeLoadDefaultAssets(long handler, AssetManager assetManager);
 
     private native void nativeDraw(long handler);
 

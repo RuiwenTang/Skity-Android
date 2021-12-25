@@ -1,3 +1,6 @@
 [submodule "skity/external"]
 	path = skity/external
 	url = git@github.com:RuiwenTang/Skity.git
+[submodule "skity/third_party/freetype"]
+	path = skity/third_party/freetype
+	url = https://github.com/freetype/freetype.git

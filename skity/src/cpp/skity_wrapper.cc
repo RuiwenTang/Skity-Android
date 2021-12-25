@@ -3,8 +3,14 @@
 #include <GLES3/gl3.h>
 #include <EGL/egl.h>
 #include <jni.h>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
 
-static void draw_basic_example(skity::Canvas* canvas) {
+#include <utility>
+
+#define SKITY_DEFAULT_FONT "Roboto Mono Nerd Font Complete.ttf"
+
+static void draw_basic_example(skity::Canvas *canvas) {
     skity::Paint paint;
     paint.setStyle(skity::Paint::kFill_Style);
     paint.setAntiAlias(true);
@@ -30,7 +36,7 @@ static void draw_basic_example(skity::Canvas* canvas) {
 }
 
 // same as https://fiddle.skia.org/c/@discrete_path
-static void draw_path_effect_example(skity::Canvas* canvas) {
+static void draw_path_effect_example(skity::Canvas *canvas) {
     const float R = 115.2f, C = 128.f;
     skity::Path path;
     path.moveTo(C + R, C);
@@ -48,7 +54,7 @@ static void draw_path_effect_example(skity::Canvas* canvas) {
     canvas->drawPath(path, paint);
 }
 
-static void draw_dash_start_example(skity::Canvas* canvas) {
+static void draw_dash_start_example(skity::Canvas *canvas) {
     skity::Path path;
     path.moveTo(199, 34);
     path.lineTo(253, 143);
@@ -76,8 +82,46 @@ static void draw_dash_start_example(skity::Canvas* canvas) {
     canvas->drawPath(path, paint);
 }
 
+// same as https://fiddle.skia.org/c/@text_rendering
+void draw_simple_text(skity::Canvas* canvas) {
+    skity::Paint paint;
+
+    paint.setTextSize(64.f);
+    paint.setAntiAlias(true);
+    paint.SetFillColor(0x42 / 255.f, 0x85 / 255.f, 0xF4 / 255.f, 1.f);
+    paint.setStyle(skity::Paint::kFill_Style);
+
+    canvas->drawSimpleText2("Skity", 20.f, 64.f, paint);
+
+    paint.setStyle(skity::Paint::kStroke_Style);
+    paint.SetStrokeColor(0xDB / 255.f, 0x44 / 255.f, 0x37 / 255.f, 1.f);
+    paint.setStrokeWidth(2.f);
+    canvas->drawSimpleText2("Skity", 20.f, 144.f, paint);
+
+    paint.SetFillColor(0x0F / 255.f, 0x9D / 255.f, 0x58 / 255.f, 1.f);
+    paint.setStyle(skity::Paint::kFill_Style);
+
+    canvas->save();
+
+    skity::Vec4 colors[] = {
+            skity::Vec4{0.f, 1.f, 1.f, 1.f},
+            skity::Vec4{0.f, 0.f, 1.f, 1.f},
+            skity::Vec4{1.f, 0.f, 0.f, 1.f},
+    };
+
+    std::vector<skity::Point> pts = {
+            skity::Point{0.f, 0.f, 0.f, 1.f},
+            skity::Point{200.f, 0.f, 0.f, 1.f},
+    };
+
+    auto lgs = skity::Shader::MakeLinear(pts.data(), colors, nullptr, 3);
+    paint.setShader(lgs);
+    canvas->drawSimpleText2("Skity", 20.f, 224.f, paint);
+    canvas->restore();
+}
+
 // same as https://fiddle.skia.org/c/844ab7d5e63876f6c889b33662ece8d5
-void draw_linear_gradient_example(skity::Canvas* canvas) {
+void draw_linear_gradient_example(skity::Canvas *canvas) {
     skity::Paint p;
     p.setStyle(skity::Paint::kFill_Style);
 
@@ -143,6 +187,8 @@ public:
 
     void draw();
 
+    void set_default_typeface(std::shared_ptr<skity::Typeface> typeface);
+
 private:
     void init_gl();
 
@@ -191,10 +237,10 @@ void Renderer::draw() {
     draw_dash_start_example(canvas);
     canvas->restore();
 
-//    canvas->save();
-//    canvas->translate(520, 0);
-//    draw_simple_text(canvas);
-//    canvas->restore();
+    canvas->save();
+    canvas->translate(520, 0);
+    draw_simple_text(canvas);
+    canvas->restore();
 
     canvas->save();
     canvas->translate(400, 300);
@@ -202,6 +248,10 @@ void Renderer::draw() {
     canvas->restore();
 
     canvas_->flush();
+}
+
+void Renderer::set_default_typeface(std::shared_ptr<skity::Typeface> typeface) {
+    canvas_->setDefaultTypeface(std::move(typeface));
 }
 
 
@@ -233,4 +283,26 @@ Java_com_skity_graphic_Renderer_nativeDestroy(JNIEnv *env, jobject thiz, jlong h
     auto render = (Renderer *) handler;
 
     delete render;
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_skity_graphic_Renderer_nativeLoadDefaultAssets(JNIEnv *env, jobject thiz, jlong handler,
+                                                        jobject asset_manager) {
+    auto render = (Renderer *) handler;
+    auto am = AAssetManager_fromJava(env, asset_manager);
+
+    auto font_asset = AAssetManager_open(am, SKITY_DEFAULT_FONT, AASSET_MODE_BUFFER);
+
+    if (!font_asset) {
+        return;
+    }
+
+    const void *buf = AAsset_getBuffer(font_asset);
+    ssize_t length = AAsset_getLength(font_asset);
+
+    auto font_data = skity::Data::MakeWithCopy(buf, length);
+
+    render->set_default_typeface(skity::Typeface::MakeFromData(font_data));
+
+    AAsset_close(font_asset);
 }
