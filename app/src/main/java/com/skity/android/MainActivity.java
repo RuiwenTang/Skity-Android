@@ -1,28 +1,40 @@
 package com.skity.android;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 
-public class MainActivity extends AppCompatActivity {
-    GLSurfaceView mView;
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+    private Button mOpenGLExample;
+    private Button mOpenGLSVGExample;
+
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mView = new SkityDemoView(this);
-         setContentView(mView);
+
+        setContentView(R.layout.activity_main2);
+
+        mOpenGLExample = findViewById(R.id.gl_example);
+        mOpenGLSVGExample = findViewById(R.id.gl_svg_example);
+
+        mOpenGLExample.setOnClickListener(this);
+        mOpenGLSVGExample.setOnClickListener(this);
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        mView.onPause();
-    }
+    public void onClick(View view) {
+        Intent intent = new Intent();
+        if (view == mOpenGLExample) {
+            intent.setClass(this, GLRenderActivity.class);
+        } else if (view == mOpenGLSVGExample) {
+            intent.setClass(this, GLSVGRenderActivity.class);
+        }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-         mView.onResume();
+        this.startActivity(intent);
     }
 }

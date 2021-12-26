@@ -1,4 +1,5 @@
 #include "skity/skity.hpp"
+#include "skity/svg/svg_dom.hpp"
 
 #include <GLES3/gl3.h>
 #include <EGL/egl.h>
@@ -83,7 +84,7 @@ static void draw_dash_start_example(skity::Canvas *canvas) {
 }
 
 // same as https://fiddle.skia.org/c/@text_rendering
-void draw_simple_text(skity::Canvas* canvas) {
+void draw_simple_text(skity::Canvas *canvas) {
     skity::Paint paint;
 
     paint.setTextSize(64.f);
@@ -181,13 +182,16 @@ class Renderer {
 public:
     Renderer() = default;
 
-    ~Renderer() = default;
+    virtual ~Renderer() = default;
 
     void init(int w, int h, int d);
 
-    void draw();
+    virtual void draw();
 
     void set_default_typeface(std::shared_ptr<skity::Typeface> typeface);
+
+protected:
+    skity::Canvas *GetCanvas() { return canvas_.get(); }
 
 private:
     void init_gl();
@@ -254,6 +258,33 @@ void Renderer::set_default_typeface(std::shared_ptr<skity::Typeface> typeface) {
     canvas_->setDefaultTypeface(std::move(typeface));
 }
 
+class SVGRenderer : public Renderer {
+public:
+    SVGRenderer() = default;
+
+    ~SVGRenderer() override = default;
+
+    void draw() override {
+        glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        
+        GetCanvas()->save();
+        GetCanvas()->translate(50, 50);
+
+        svg_dom_->Render(GetCanvas());
+
+        GetCanvas()->restore();
+
+        GetCanvas()->flush();
+    }
+
+    void init_svg(skity::Data *data) {
+        svg_dom_ = skity::SVGDom::MakeFromData(data);
+    }
+
+private:
+    std::unique_ptr<skity::SVGDom> svg_dom_ = {};
+};
+
 
 extern "C"
 JNIEXPORT jlong JNICALL
@@ -305,4 +336,37 @@ Java_com_skity_graphic_Renderer_nativeLoadDefaultAssets(JNIEnv *env, jobject thi
     render->set_default_typeface(skity::Typeface::MakeFromData(font_data));
 
     AAsset_close(font_asset);
+}
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_skity_graphic_GLSVGRender_nativeInitSVG(JNIEnv *env, jobject thiz, jint width, jint height,
+                                                 jint density, jobject context) {
+    auto render = new SVGRenderer;
+
+    render->init(width, height, density);
+
+    return (jlong) render;
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_skity_graphic_GLSVGRender_nativeLoadSVG(JNIEnv *env, jobject thiz, jlong handler,
+                                                 jobject asset_manager) {
+    auto svg_render = (SVGRenderer *) handler;
+
+    auto am = AAssetManager_fromJava(env, asset_manager);
+
+    auto svg_asset = AAssetManager_open(am, "images/tiger.svg", AASSET_MODE_BUFFER);
+
+    if (!svg_asset) {
+        return;
+    }
+
+    const void *buf = AAsset_getBuffer(svg_asset);
+    ssize_t length = AAsset_getLength(svg_asset);
+
+    auto svg_data = skity::Data::MakeWithCopy(buf, length);
+
+    svg_render->init_svg(svg_data.get());
+
+    AAsset_close(svg_asset);
 }

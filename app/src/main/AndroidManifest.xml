@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.skity.android">
 
-    <uses-feature android:glEsVersion="0x00030000"/>
+    <uses-feature android:glEsVersion="0x00030000" />
 
     <application
         android:name=".SkityApplication"
@@ -12,12 +12,18 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SkityAndroid">
-
-
-        <activity android:name=".MainActivity"
+        <activity
+            android:name=".GLSVGRenderActivity"
+            android:exported="false" />
+        <activity
+            android:name=".GLRenderActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

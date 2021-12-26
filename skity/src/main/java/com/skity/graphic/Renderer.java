@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.res.AssetManager;
 
 public class Renderer {
-    private long nativeHandle = 0;
+    protected long nativeHandle = 0;
 
     static {
         System.loadLibrary("skity_android");

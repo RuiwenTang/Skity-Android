@@ -20,11 +20,13 @@ add_library(skity_android SHARED
 
 target_include_directories(skity_android PRIVATE
         external/include
+        external/module/svg/include
         external/third_party/glm
         )
 
 target_link_libraries(skity_android
         skity::skity
+        skity::svg
         android
         EGL
         GLESv3
