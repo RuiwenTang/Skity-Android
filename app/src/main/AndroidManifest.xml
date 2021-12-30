@@ -13,6 +13,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SkityAndroid">
         <activity
+            android:name=".GLFrameActivity"
+            android:exported="false" />
+        <activity
             android:name=".GLSVGRenderActivity"
             android:exported="false" />
         <activity

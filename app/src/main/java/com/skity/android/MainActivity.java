@@ -12,6 +12,7 @@ import android.widget.Button;
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private Button mOpenGLExample;
     private Button mOpenGLSVGExample;
+    private Button mOpenGLFrameExample;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -21,9 +22,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         mOpenGLExample = findViewById(R.id.gl_example);
         mOpenGLSVGExample = findViewById(R.id.gl_svg_example);
+        mOpenGLFrameExample = findViewById(R.id.gl_frame_example);
 
         mOpenGLExample.setOnClickListener(this);
         mOpenGLSVGExample.setOnClickListener(this);
+        mOpenGLFrameExample.setOnClickListener(this);
     }
 
     @Override
@@ -33,6 +36,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             intent.setClass(this, GLRenderActivity.class);
         } else if (view == mOpenGLSVGExample) {
             intent.setClass(this, GLSVGRenderActivity.class);
+        } else if (view == mOpenGLFrameExample) {
+            intent.setClass(this, GLFrameActivity.class);
         }
 
         this.startActivity(intent);

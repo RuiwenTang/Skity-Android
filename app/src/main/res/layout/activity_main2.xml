@@ -13,7 +13,7 @@
         android:layout_marginStart="154dp"
         android:layout_marginTop="207dp"
         android:layout_marginEnd="163dp"
-        android:text="Open GL Example"
+        android:text="OpenGL Example"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -25,8 +25,18 @@
         android:layout_marginStart="154dp"
         android:layout_marginTop="47dp"
         android:layout_marginEnd="163dp"
-        android:text="Open GL SVG Example"
+        android:text="OpenGL SVG Example"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/gl_example" />
+
+    <Button
+        android:id="@+id/gl_frame_example"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="47dp"
+        android:text="OpenGL Frame Example"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/gl_svg_example" />
 </androidx.constraintlayout.widget.ConstraintLayout>
