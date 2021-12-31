@@ -12,6 +12,7 @@ public class GLFrameActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         mView = new GLFrameDemoView(this);
         setContentView(mView);
     }
