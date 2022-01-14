@@ -15,7 +15,8 @@ public:
     ~FrameRender() override = default;
 
 
-    void init_render_typeface(std::shared_ptr<skity::Typeface> typeface);
+    void init_render_typeface(std::shared_ptr<skity::Typeface> typeface,
+                              std::shared_ptr<skity::Typeface> emoji);
 
     void init_images(std::vector<std::shared_ptr<skity::Pixmap>> images);
 
@@ -24,6 +25,7 @@ protected:
 
 private:
     std::shared_ptr<skity::Typeface> render_typeface_ = {};
+    std::shared_ptr<skity::Typeface> emoji_typeface_ = {};
     std::vector<std::shared_ptr<skity::Pixmap>> render_images_ = {};
     double time_ = {};
     double start_time_ = {};

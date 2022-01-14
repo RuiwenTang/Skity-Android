@@ -139,18 +139,27 @@ Java_com_skity_graphic_GLFrameRender_nativeInitTypefaces(JNIEnv *env, jobject th
 
     font_asset = AAssetManager_open(am, "Roboto-Regular.ttf", AASSET_MODE_BUFFER);
 
-    if (!font_asset) {
+    auto emoji_asset = AAssetManager_open(am, "NotoEmoji-Regular.ttf", AASSET_MODE_BUFFER);
+
+    if (!font_asset || !emoji_asset) {
         return;
     }
 
     buf = AAsset_getBuffer(font_asset);
     length = AAsset_getLength(font_asset);
 
+    auto emoji_buf = AAsset_getBuffer(emoji_asset);
+    auto emoji_buf_length = AAsset_getLength(emoji_asset);
+
     font_data = skity::Data::MakeWithCopy(buf, length);
 
-    render->init_render_typeface(skity::Typeface::MakeFromData(font_data));
+    auto emoji_font_data = skity::Data::MakeWithCopy(emoji_buf, emoji_buf_length);
+
+    render->init_render_typeface(skity::Typeface::MakeFromData(font_data),
+                                 skity::Typeface::MakeFromData(emoji_font_data));
 
     AAsset_close(font_asset);
+    AAsset_close(emoji_asset);
 }
 extern "C"
 JNIEXPORT void JNICALL

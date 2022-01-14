@@ -16,15 +16,18 @@ double skity_get_time() {
 void render_frame_demo(
         skity::Canvas *canvas,
         std::vector<std::shared_ptr<skity::Pixmap>> const &images,
-        std::shared_ptr<skity::Typeface> const &typeface, float mx, float my,
+        std::shared_ptr<skity::Typeface> const &typeface,
+        std::shared_ptr<skity::Typeface> const &emoji, float mx, float my,
         float width, float height, float t);
 
 FrameRender::FrameRender() : Renderer(),
                              fpsGraph(Perf::GRAPH_RENDER_FPS, "Frame Time"),
                              cpuGraph(Perf::GRAPH_RENDER_MS, "CPU Time") {}
 
-void FrameRender::init_render_typeface(std::shared_ptr<skity::Typeface> typeface) {
+void FrameRender::init_render_typeface(std::shared_ptr<skity::Typeface> typeface,
+                                       std::shared_ptr<skity::Typeface> emoji) {
     render_typeface_ = std::move(typeface);
+    emoji_typeface_ = std::move(emoji);
 
     start_time_ = time_ = prev_time_ = skity_get_time();
 }
@@ -43,7 +46,8 @@ void FrameRender::draw() {
     double dt = time_ - prev_time_;
     prev_time_ = time_;
 
-    render_frame_demo(GetCanvas(), render_images_, render_typeface_, 0.f, 0.f, Width(), Height(),
+    render_frame_demo(GetCanvas(), render_images_, render_typeface_, emoji_typeface_, 0.f, 0.f,
+                      Width(), Height(),
                       static_cast<float>(time_ - start_time_));
 
     cpu_time_ = skity_get_time() - time_;
