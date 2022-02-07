@@ -3,6 +3,7 @@
 #define SKITY_ANDROID_RENDERER_HPP
 
 #include "skity/skity.hpp"
+#include "skity/gpu/gpu_context.hpp"
 
 class Renderer {
 public:
