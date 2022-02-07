@@ -12,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="154dp"
-        android:layout_marginTop="207dp"
+        android:layout_marginTop="107dp"
         android:layout_marginEnd="163dp"
         android:text="OpenGL Example"
         app:layout_constraintEnd_toEndOf="parent"
@@ -40,4 +40,15 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/gl_svg_example" />
+
+    <Button
+        android:id="@+id/vk_frame_example"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="47dp"
+        android:text="Vulkan Frame Example"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.497"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/gl_frame_example" />
 </androidx.constraintlayout.widget.ConstraintLayout>

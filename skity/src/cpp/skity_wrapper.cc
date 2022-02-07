@@ -2,6 +2,7 @@
 #include "skity/svg/svg_dom.hpp"
 
 #include "renderer.hpp"
+#include "vk_renderer.hpp"
 #include "static_renderer.hpp"
 #include "svg_renderer.hpp"
 #include "frame_renderer.hpp"
@@ -11,6 +12,7 @@
 #include <jni.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
+#include <android/native_window_jni.h>
 #include <android/bitmap.h>
 
 #include <utility>
@@ -193,4 +195,36 @@ Java_com_skity_graphic_GLFrameRender_nativeInitImages(JNIEnv *env, jobject thiz,
     auto render = (FrameRender *) native_handle;
 
     render->init_images(skity_images);
+}
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_skity_graphic_VkFrameRender_nativeInit(JNIEnv *env, jobject thiz, jint width, jint height,
+                                                jint density, jobject surface) {
+    auto render = new VkRenderer();
+
+    ANativeWindow *window = ANativeWindow_fromSurface(env, surface);
+
+    render->init(width, height, density, window);
+
+    return (jlong) render;
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_skity_graphic_VkRenderer_nativeLoadDefaultAssets(JNIEnv *env, jobject thiz, jlong handler,
+                                                          jobject asset_manager) {
+    // TODO: implement nativeLoadDefaultAssets()
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_skity_graphic_VkRenderer_nativeDraw(JNIEnv *env, jobject thiz, jlong handler) {
+    // TODO: implement nativeDraw()
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_skity_graphic_VkRenderer_nativeDestroy(JNIEnv *env, jobject thiz, jlong handler) {
+    auto render = (VkRenderer *) handler;
+
+    render->destroy();
+
+    delete render;
 }

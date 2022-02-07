@@ -4,3 +4,6 @@
 [submodule "skity/third_party/freetype"]
 	path = skity/third_party/freetype
 	url = https://github.com/freetype/freetype.git
+[submodule "skity/third_party/volk"]
+	path = skity/third_party/volk
+	url = https://github.com/zeux/volk.git

@@ -16,9 +16,12 @@ set(FREETYPE_FOUND True)
 set(FREETYPE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/freetype/include)
 
 add_subdirectory(external)
+# volk
+include_directories(third_party/volk)
 
 # Fixme for share Skity example code
 add_definitions(-DSKITY_ANDROID=1)
+add_definitions(-DVK_USE_PLATFORM_ANDROID_KHR=1)
 
 add_library(skity_android SHARED
         external/example/example.cc
@@ -26,13 +29,17 @@ add_library(skity_android SHARED
         external/example/perf.cc
         src/cpp/renderer.cc
         src/cpp/renderer.hpp
+        src/cpp/vk_renderer.cc
+        src/cpp/vk_renderer.hpp
         src/cpp/static_renderer.cc
         src/cpp/static_renderer.hpp
         src/cpp/svg_renderer.cc
         src/cpp/svg_renderer.hpp
         src/cpp/frame_renderer.cc
         src/cpp/frame_renderer.hpp
-        src/cpp/skity_wrapper.cc)
+        src/cpp/skity_wrapper.cc
+        third_party/volk/volk.c
+        )
 
 target_include_directories(skity_android PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/cpp
