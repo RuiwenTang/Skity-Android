@@ -3,6 +3,7 @@
 
 #include "renderer.hpp"
 #include "vk_renderer.hpp"
+#include "vk_svg_renderer.hpp"
 #include "static_renderer.hpp"
 #include "svg_renderer.hpp"
 #include "frame_renderer.hpp"
@@ -206,6 +207,8 @@ Java_com_skity_graphic_VkFrameRender_nativeInit(JNIEnv *env, jobject thiz, jint 
 
     render->init(width, height, density, window);
 
+    render->set_clear_color(0.3f, 0.3f, 0.32f, 1.f);
+
     return (jlong) render;
 }
 extern "C"
@@ -217,7 +220,11 @@ Java_com_skity_graphic_VkRenderer_nativeLoadDefaultAssets(JNIEnv *env, jobject t
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_skity_graphic_VkRenderer_nativeDraw(JNIEnv *env, jobject thiz, jlong handler) {
-    // TODO: implement nativeDraw()
+    auto render = (VkRenderer *) handler;
+    if (render == nullptr) {
+        return;
+    }
+    render->draw();
 }
 extern "C"
 JNIEXPORT void JNICALL
@@ -227,4 +234,39 @@ Java_com_skity_graphic_VkRenderer_nativeDestroy(JNIEnv *env, jobject thiz, jlong
     render->destroy();
 
     delete render;
+}
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_skity_graphic_VkSVGRenderer_nativeCreateSVGRender(JNIEnv *env, jobject thiz, jint width,
+                                                           jint height, jint density,
+                                                           jobject surface) {
+    auto render = new VkSVGRender;
+    ANativeWindow *window = ANativeWindow_fromSurface(env, surface);
+    render->init(width, height, density, window);
+    render->set_clear_color(1.f, 1.f, 1.f, 1.f);
+
+    return (jlong) render;
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_skity_graphic_VkSVGRenderer_nativeInitSVGDom(JNIEnv *env, jobject thiz, jlong handler,
+                                                      jobject asset_manager) {
+    auto svg_render = (VkSVGRender *) handler;
+
+    auto am = AAssetManager_fromJava(env, asset_manager);
+
+    auto svg_asset = AAssetManager_open(am, "images/tiger.svg", AASSET_MODE_BUFFER);
+
+    if (!svg_asset) {
+        return;
+    }
+
+    const void *buf = AAsset_getBuffer(svg_asset);
+    ssize_t length = AAsset_getLength(svg_asset);
+
+    auto svg_data = skity::Data::MakeWithCopy(buf, length);
+
+    svg_render->init_svg(svg_data.get());
+
+    AAsset_close(svg_asset);
 }

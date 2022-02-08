@@ -1,9 +1,19 @@
 
 #include "vk_renderer.hpp"
+#include <array>
 #include <vector>
 #include <android/log.h>
 #include <cassert>
 #include <set>
+#include <limits>
+
+static const char *kTAG = "SkityVK";
+#define LOGI(...) \
+  ((void)__android_log_print(ANDROID_LOG_INFO, kTAG, __VA_ARGS__))
+#define LOGW(...) \
+  ((void)__android_log_print(ANDROID_LOG_WARN, kTAG, __VA_ARGS__))
+#define LOGE(...) \
+  ((void)__android_log_print(ANDROID_LOG_ERROR, kTAG, __VA_ARGS__))
 
 // Vulkan call wrapper
 #define CALL_VK(func)                                                 \
@@ -16,6 +26,11 @@
     }                                                                 \
   }while(false)
 
+
+/**
+ * Validation Layer name
+ */
+static const char *kValLayerName = "VK_LAYER_KHRONOS_validation";
 
 static VkSampleCountFlagBits get_max_usable_sample_count(
         VkPhysicalDeviceProperties props) {
@@ -66,9 +81,9 @@ static bool get_support_depth_format(VkPhysicalDevice phy_devce,
     // format to use
     // Start with the highest precision packed format
     std::vector<VkFormat> depthFormats = {
-            VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D32_SFLOAT,
+            VK_FORMAT_D32_SFLOAT_S8_UINT,
             VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT,
-            VK_FORMAT_D16_UNORM};
+    };
 
     for (auto &format : depthFormats) {
         VkFormatProperties formatProps;
@@ -88,44 +103,166 @@ void VkRenderer::init(int w, int h, int d, ANativeWindow *window) {
     width_ = w;
     height_ = h;
     density_ = d;
+    window_ = window;
     init_vk(window);
+    this->proc_loader = (void*) vkGetDeviceProcAddr;
+    canvas_ = skity::Canvas::MakeHardwareAccelationCanvas(width_, height_, density_, this);
 }
 
 void VkRenderer::destroy() {
+    vkDeviceWaitIdle(vk_device_);
+
     canvas_.reset();
+
+    destroy_swap_chain_views();
+
+    vkDestroyRenderPass(vk_device_, vk_render_pass_, nullptr);
+    vk_render_pass_ = VK_NULL_HANDLE;
 
     for (auto semp : present_semaphore_) {
         vkDestroySemaphore(vk_device_, semp, nullptr);
     }
+    present_semaphore_.clear();
+
     for (auto semp : render_semaphore_) {
         vkDestroySemaphore(vk_device_, semp, nullptr);
     }
+    render_semaphore_.clear();
+
     for (auto fence : cmd_fences_) {
         vkDestroyFence(vk_device_, fence, nullptr);
     }
+    cmd_fences_.clear();
 
     vkResetCommandPool(vk_device_, cmd_pool_, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
     vkDestroyCommandPool(vk_device_, cmd_pool_, nullptr);
-
-    for (auto const &st : stencil_image_) {
-        vkDestroyImageView(vk_device_, st.image_view, nullptr);
-        vkDestroyImage(vk_device_, st.image, nullptr);
-        vkFreeMemory(vk_device_, st.memory, nullptr);
-    }
-
-    for (auto const &si : sampler_image_) {
-        vkDestroyImageView(vk_device_, si.image_view, nullptr);
-        vkDestroyImage(vk_device_, si.image, nullptr);
-        vkFreeMemory(vk_device_, si.memory, nullptr);
-    }
+    cmd_pool_ = VK_NULL_HANDLE;
 
     vkDestroySwapchainKHR(vk_device_, vk_swap_chain_, nullptr);
+    vk_swap_chain_ = VK_NULL_HANDLE;
+
     vkDestroyDevice(vk_device_, nullptr);
+    vk_device_ = VK_NULL_HANDLE;
+
     vkDestroySurfaceKHR(vk_instance_, vk_surface_, nullptr);
+    vk_surface_ = VK_NULL_HANDLE;
+
     vkDestroyInstance(vk_instance_, nullptr);
+    vk_instance_ = VK_NULL_HANDLE;
+
+    __android_log_print(ANDROID_LOG_INFO, "SkityVk ", "VkRender Context clean up.");
 }
 
-void VkRenderer::draw() {}
+void VkRenderer::draw() {
+    VkResult result = vkAcquireNextImageKHR(vk_device_, vk_swap_chain_,
+                                            UINT64_MAX,
+                                            present_semaphore_[frame_index_],
+                                            VK_NULL_HANDLE, &current_frame_);
+
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        __android_log_print(ANDROID_LOG_ERROR, "SkityVK",
+                            "need to handle window resize of recreate swap chain!");
+
+        vkDeviceWaitIdle(vk_device_);
+
+        recreate_swap_chain();
+        recreate_frame_buffer();
+
+        current_frame_ = 0;
+        frame_index_ = 0;
+
+        result = vkAcquireNextImageKHR(vk_device_, vk_swap_chain_,
+                                       UINT64_MAX,
+                                       present_semaphore_[frame_index_],
+                                       VK_NULL_HANDLE, &current_frame_);
+        assert(result == VK_SUCCESS);
+    } else if (result != VK_SUCCESS) {
+        assert(false);
+    }
+
+    VkCommandBuffer current_cmd = cmd_buffers_[current_frame_];
+    vkResetCommandBuffer(current_cmd, 0);
+
+    VkCommandBufferBeginInfo cmd_begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    cmd_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    if (vkBeginCommandBuffer(current_cmd, &cmd_begin_info) != VK_SUCCESS) {
+        __android_log_print(ANDROID_LOG_ERROR, "SkityVK",
+                            "Failed to begin cmd buffer at index : %d", current_frame_);
+        return;
+    }
+
+    std::vector<VkClearValue> clear_values{3};
+    clear_values[0].color = {clear_color_[0], clear_color_[1], clear_color_[2],
+                             clear_color_[3]};
+    clear_values[1].depthStencil = {0.f, 0};
+    clear_values[2].color = {clear_color_[0], clear_color_[1], clear_color_[2],
+                             clear_color_[3]};
+
+    VkRenderPassBeginInfo render_pass_begin_info{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    render_pass_begin_info.renderPass = vk_render_pass_;
+    render_pass_begin_info.framebuffer = swap_chain_frame_buffers_[current_frame_];
+    render_pass_begin_info.renderArea.offset = {0, 0};
+    render_pass_begin_info.renderArea.extent = swap_chain_extend_;
+    render_pass_begin_info.clearValueCount = clear_values.size();
+    render_pass_begin_info.pClearValues = clear_values.data();
+
+    vkCmdBeginRenderPass(current_cmd, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+    onDraw(canvas_.get());
+
+    canvas_->flush();
+
+    vkCmdEndRenderPass(current_cmd);
+
+    CALL_VK(vkEndCommandBuffer(current_cmd));
+
+    VkPipelineStageFlags submit_pipeline_stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                                                  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
+    VkSubmitInfo submit_info{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submit_info.pWaitDstStageMask = &submit_pipeline_stages;
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = &present_semaphore_[frame_index_];
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = &render_semaphore_[frame_index_];
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &current_cmd;
+
+    vkResetFences(vk_device_, 1, &cmd_fences_[current_frame_]);
+
+    CALL_VK(vkQueueSubmit(vk_present_queue_, 1, &submit_info, cmd_fences_[current_frame_]));
+
+    CALL_VK(vkWaitForFences(vk_device_, 1, &cmd_fences_[current_frame_], VK_TRUE,
+                            std::numeric_limits<uint64_t>::max()));
+
+    VkPresentInfoKHR present_info{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = &vk_swap_chain_;
+    present_info.pImageIndices = &current_frame_;
+    present_info.pWaitSemaphores = &render_semaphore_[frame_index_];
+    present_info.waitSemaphoreCount = 1;
+
+    result = vkQueuePresentKHR(vk_present_queue_, &present_info);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        __android_log_print(ANDROID_LOG_ERROR, "SkityVK",
+                            "need to handle window resize of recreate swap chain!");
+        vkDeviceWaitIdle(vk_device_);
+
+        recreate_swap_chain();
+        recreate_frame_buffer();
+
+        frame_index_ = 0;
+        current_frame_ = 0;
+        return;
+    }
+
+
+    frame_index_++;
+    frame_index_ = frame_index_ % swap_chain_image_view_.size();
+}
 
 void VkRenderer::set_default_typeface(std::shared_ptr<skity::Typeface> typeface) {
     canvas_->setDefaultTypeface(std::move(typeface));
@@ -144,6 +281,8 @@ void VkRenderer::init_vk(ANativeWindow *window) {
     create_command_pool();
     create_command_buffers();
     create_sync_objects();
+    create_render_pass();
+    create_frame_buffer();
 }
 
 void VkRenderer::create_vk_instance() {
@@ -158,10 +297,33 @@ void VkRenderer::create_vk_instance() {
     instance_ext.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
     instance_ext.emplace_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
 
+    // Enable just the Khronos validation layer.
+    static const char *layers[] = {"VK_LAYER_KHRONOS_validation"};
+    // Get the layer count using a null pointer as the last parameter.
+    uint32_t instance_layer_present_count = 0;
+    vkEnumerateInstanceLayerProperties(&instance_layer_present_count, nullptr);
+
+    // Enumerate layers with a valid pointer in the last parameter.
+    VkLayerProperties layer_props[instance_layer_present_count];
+    vkEnumerateInstanceLayerProperties(&instance_layer_present_count, layer_props);
+
+    // Make sure selected validation layers are available.
+    VkLayerProperties *layer_props_end = layer_props + instance_layer_present_count;
+    for (const char *layer:layers) {
+        assert(layer_props_end !=
+               std::find_if(layer_props, layer_props_end,
+                            [layer](VkLayerProperties layerProperties) {
+                                return strcmp(layerProperties.layerName, layer) == 0;
+                            }));
+    }
+
+
     VkInstanceCreateInfo create_info{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     create_info.pApplicationInfo = &app_info;
     create_info.enabledExtensionCount = instance_ext.size();
     create_info.ppEnabledExtensionNames = instance_ext.data();
+    create_info.enabledLayerCount = 1;
+    create_info.ppEnabledLayerNames = layers;
 
     CALL_VK(vkCreateInstance(&create_info, nullptr, &vk_instance_));
 
@@ -369,13 +531,14 @@ void VkRenderer::create_swap_chain() {
     create_info.pQueueFamilyIndices = &present_queue_index_;
     create_info.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     create_info.compositeAlpha = surface_composite;
-    create_info.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+    create_info.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
     create_info.oldSwapchain = VK_NULL_HANDLE;
 
     CALL_VK(vkCreateSwapchainKHR(vk_device_, &create_info, nullptr, &vk_swap_chain_));
 
     swap_chain_format_ = format;
     swap_chain_extend_ = surface_caps.currentExtent;
+    surface_composite_ = surface_composite;
 }
 
 uint32_t VkRenderer::get_memory_type(uint32_t type_bits,
@@ -571,4 +734,234 @@ void VkRenderer::create_sync_objects() {
         CALL_VK(vkCreateSemaphore(vk_device_, &semaphore_create_info, nullptr,
                                   &render_semaphore_[i]) != VK_SUCCESS);
     }
+}
+
+void VkRenderer::create_render_pass() {
+    std::array<VkAttachmentDescription, 3> attachments = {};
+    // color attachment
+    attachments[0].format = swap_chain_format_;
+    attachments[0].samples = vk_sample_count_;
+    attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    // depth stencil attachment
+    attachments[1].format = stencil_image_[0].format;
+    attachments[1].samples = vk_sample_count_;
+    attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    // color resolve attachment
+    attachments[2].format = swap_chain_format_;
+    attachments[2].samples = VK_SAMPLE_COUNT_1_BIT;
+    attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[2].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[2].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference color_reference{};
+    color_reference.attachment = 0;
+    color_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depth_stencil_reference{};
+    depth_stencil_reference.attachment = 1;
+    depth_stencil_reference.layout =
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference resolve_reference{};
+    resolve_reference.attachment = 2;
+    resolve_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_reference;
+    subpass.pDepthStencilAttachment = &depth_stencil_reference;
+    subpass.pResolveAttachments = &resolve_reference;
+
+    std::array<VkSubpassDependency, 2> subpass_dependencies{};
+    subpass_dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpass_dependencies[0].dstSubpass = 0;
+    subpass_dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    subpass_dependencies[0].dstStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpass_dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    subpass_dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    subpass_dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    subpass_dependencies[1].srcSubpass = 0;
+    subpass_dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+    subpass_dependencies[1].srcStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpass_dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    subpass_dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    subpass_dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    subpass_dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    VkRenderPassCreateInfo create_info{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+    create_info.attachmentCount = attachments.size();
+    create_info.pAttachments = attachments.data();
+    create_info.subpassCount = 1;
+    create_info.pSubpasses = &subpass;
+    create_info.dependencyCount = subpass_dependencies.size();
+    create_info.pDependencies = subpass_dependencies.data();
+
+    CALL_VK(vkCreateRenderPass(vk_device_, &create_info, nullptr, &vk_render_pass_));
+}
+
+void VkRenderer::create_frame_buffer() {
+    swap_chain_frame_buffers_.resize(swap_chain_image_view_.size());
+
+    std::array<VkImageView, 3> attachments = {};
+
+    for (size_t i = 0; i < swap_chain_frame_buffers_.size(); i++) {
+        attachments[0] = sampler_image_[i].image_view;
+        attachments[1] = stencil_image_[i].image_view;
+        attachments[2] = swap_chain_image_view_[i];
+        VkFramebufferCreateInfo create_info{
+                VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        create_info.renderPass = vk_render_pass_;
+        create_info.attachmentCount = attachments.size();
+        create_info.pAttachments = attachments.data();
+        create_info.width = swap_chain_extend_.width;
+        create_info.height = swap_chain_extend_.height;
+        create_info.layers = 1;
+
+        CALL_VK(vkCreateFramebuffer(vk_device_, &create_info, nullptr,
+                                    &swap_chain_frame_buffers_[i]));
+    }
+}
+
+void VkRenderer::destroy_swap_chain_views() {
+    for (auto fb : swap_chain_frame_buffers_) {
+        vkDestroyFramebuffer(vk_device_, fb, nullptr);
+    }
+    swap_chain_frame_buffers_.clear();
+
+    for (auto const &st : stencil_image_) {
+        vkDestroyImageView(vk_device_, st.image_view, nullptr);
+        vkDestroyImage(vk_device_, st.image, nullptr);
+        vkFreeMemory(vk_device_, st.memory, nullptr);
+    }
+    stencil_image_.clear();
+
+    for (auto const &si : sampler_image_) {
+        vkDestroyImageView(vk_device_, si.image_view, nullptr);
+        vkDestroyImage(vk_device_, si.image, nullptr);
+        vkFreeMemory(vk_device_, si.memory, nullptr);
+    }
+    sampler_image_.clear();
+
+    for (auto image_view : swap_chain_image_view_) {
+        vkDestroyImageView(vk_device_, image_view, nullptr);
+    }
+    swap_chain_image_view_.clear();
+}
+
+void VkRenderer::recreate_swap_chain() {
+    VkSwapchainKHR old_swap_chain = vk_swap_chain_;
+
+    VkSurfaceCapabilitiesKHR capabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vk_phy_device_, vk_surface_, &capabilities);
+    pretransform_flag_ = capabilities.currentTransform;
+
+
+    VkSwapchainCreateInfoKHR create_info{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
+    create_info.surface = vk_surface_;
+    create_info.minImageCount = std::max(uint32_t(2), capabilities.minImageCount);
+    create_info.imageFormat = swap_chain_format_;
+    create_info.imageExtent = capabilities.currentExtent;
+    create_info.imageArrayLayers = 1;
+    create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    create_info.queueFamilyIndexCount = 1;
+    create_info.pQueueFamilyIndices = &present_queue_index_;
+    create_info.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    create_info.compositeAlpha = surface_composite_;
+    create_info.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+    create_info.oldSwapchain = VK_NULL_HANDLE;
+    create_info.preTransform = pretransform_flag_;
+    create_info.oldSwapchain = old_swap_chain;
+
+    CALL_VK(vkCreateSwapchainKHR(vk_device_, &create_info, nullptr, &vk_swap_chain_));
+
+    if (old_swap_chain) {
+        vkDestroySwapchainKHR(vk_device_, old_swap_chain, nullptr);
+    }
+}
+
+void VkRenderer::recreate_frame_buffer() {
+    destroy_swap_chain_views();
+    create_swap_chain_views();
+    create_frame_buffer();
+}
+
+VkInstance VkRenderer::GetInstance() {
+    return vk_instance_;
+}
+
+VkPhysicalDevice VkRenderer::GetPhysicalDevice() {
+    return vk_phy_device_;
+}
+
+VkDevice VkRenderer::GetDevice() {
+    return vk_device_;
+}
+
+VkExtent2D VkRenderer::GetFrameExtent() {
+    return swap_chain_extend_;
+}
+
+VkCommandBuffer VkRenderer::GetCurrentCMD() {
+    return cmd_buffers_[current_frame_];
+}
+
+VkRenderPass VkRenderer::GetRenderPass() {
+    return vk_render_pass_;
+}
+
+PFN_vkGetInstanceProcAddr VkRenderer::GetInstanceProcAddr() {
+    return vkGetInstanceProcAddr;
+}
+
+uint32_t VkRenderer::GetSwapchainBufferCount() {
+    return swap_chain_image_view_.size();
+}
+
+uint32_t VkRenderer::GetCurrentBufferIndex() {
+    return current_frame_;
+}
+
+VkQueue VkRenderer::GetGraphicQueue() {
+    return vk_graphic_queue_;
+}
+
+VkQueue VkRenderer::GetComputeQueue() {
+    return vk_compute_queue_;
+}
+
+uint32_t VkRenderer::GetGraphicQueueIndex() {
+    return graphic_queue_index_;
+}
+
+uint32_t VkRenderer::GetComputeQueueIndex() {
+    return compute_queue_index_;
+}
+
+VkSampleCountFlagBits VkRenderer::GetSampleCount() {
+    return vk_sample_count_;
+}
+
+VkFormat VkRenderer::GetDepthStencilFormat() {
+    return depth_stencil_format_;
 }

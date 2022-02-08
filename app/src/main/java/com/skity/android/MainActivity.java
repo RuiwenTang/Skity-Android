@@ -13,6 +13,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button mOpenGLExample;
     private Button mOpenGLSVGExample;
     private Button mOpenGLFrameExample;
+    private Button mVulkanSVGExample;
     private Button mVulkanFrameExample;
 
     @Override
@@ -24,11 +25,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mOpenGLExample = findViewById(R.id.gl_example);
         mOpenGLSVGExample = findViewById(R.id.gl_svg_example);
         mOpenGLFrameExample = findViewById(R.id.gl_frame_example);
+        mVulkanSVGExample = findViewById(R.id.vk_svg_example);
         mVulkanFrameExample = findViewById(R.id.vk_frame_example);
 
         mOpenGLExample.setOnClickListener(this);
         mOpenGLSVGExample.setOnClickListener(this);
         mOpenGLFrameExample.setOnClickListener(this);
+        mVulkanSVGExample.setOnClickListener(this);
         mVulkanFrameExample.setOnClickListener(this);
     }
 
@@ -41,6 +44,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             intent.setClass(this, GLSVGRenderActivity.class);
         } else if (view == mOpenGLFrameExample) {
             intent.setClass(this, GLFrameActivity.class);
+        } else if (view == mVulkanSVGExample) {
+            intent.setClass(this, VkSVGActivity.class);
         } else if (view == mVulkanFrameExample) {
             intent.setClass(this, VkFrameActivity.class);
         }

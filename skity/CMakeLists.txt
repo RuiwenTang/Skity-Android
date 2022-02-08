@@ -31,6 +31,8 @@ add_library(skity_android SHARED
         src/cpp/renderer.hpp
         src/cpp/vk_renderer.cc
         src/cpp/vk_renderer.hpp
+        src/cpp/vk_svg_renderer.cc
+        src/cpp/vk_svg_renderer.hpp
         src/cpp/static_renderer.cc
         src/cpp/static_renderer.hpp
         src/cpp/svg_renderer.cc
