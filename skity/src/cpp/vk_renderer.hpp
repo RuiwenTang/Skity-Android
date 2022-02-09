@@ -18,7 +18,7 @@ struct ImageWrapper {
 
 class VkRenderer : public skity::GPUVkContext {
 public:
-    VkRenderer(): skity::GPUVkContext((void*) vkGetDeviceProcAddr) {}
+    VkRenderer() : skity::GPUVkContext((void *) vkGetDeviceProcAddr) {}
 
     virtual ~VkRenderer() = default;
 
@@ -66,6 +66,8 @@ public:
     VkSampleCountFlagBits GetSampleCount() override;
 
     VkFormat GetDepthStencilFormat() override;
+
+    VkSurfaceTransformFlagBitsKHR GetSurfaceTransform() override;
 
 protected:
     virtual void onDraw(skity::Canvas *canvas) {}
@@ -130,6 +132,7 @@ private:
     VkQueue vk_present_queue_ = {};
     VkQueue vk_compute_queue_ = {};
     VkSurfaceKHR vk_surface_ = {};
+    VkSurfaceTransformFlagBitsKHR vk_surface_transform_ = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     VkSwapchainKHR vk_swap_chain_ = {};
     VkFormat swap_chain_format_ = {};
     VkFormat depth_stencil_format_{};

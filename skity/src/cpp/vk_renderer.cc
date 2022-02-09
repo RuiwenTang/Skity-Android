@@ -539,6 +539,7 @@ void VkRenderer::create_swap_chain() {
     swap_chain_format_ = format;
     swap_chain_extend_ = surface_caps.currentExtent;
     surface_composite_ = surface_composite;
+    vk_surface_transform_ = surface_caps.currentTransform;
 }
 
 uint32_t VkRenderer::get_memory_type(uint32_t type_bits,
@@ -894,6 +895,7 @@ void VkRenderer::recreate_swap_chain() {
     create_info.oldSwapchain = old_swap_chain;
 
     CALL_VK(vkCreateSwapchainKHR(vk_device_, &create_info, nullptr, &vk_swap_chain_));
+    vk_surface_transform_ = capabilities.currentTransform;
 
     if (old_swap_chain) {
         vkDestroySwapchainKHR(vk_device_, old_swap_chain, nullptr);
@@ -964,4 +966,8 @@ VkSampleCountFlagBits VkRenderer::GetSampleCount() {
 
 VkFormat VkRenderer::GetDepthStencilFormat() {
     return depth_stencil_format_;
+}
+
+VkSurfaceTransformFlagBitsKHR VkRenderer::GetSurfaceTransform()  {
+return vk_surface_transform_;
 }

@@ -13,6 +13,7 @@ public class VkFrameActivity extends AppCompatActivity implements Choreographer.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         mView = new VkFrameDemoView(this);
         setContentView(mView);
     }

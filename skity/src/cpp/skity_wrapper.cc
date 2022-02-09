@@ -4,6 +4,7 @@
 #include "renderer.hpp"
 #include "vk_renderer.hpp"
 #include "vk_svg_renderer.hpp"
+#include "vk_frame_renderer.hpp"
 #include "static_renderer.hpp"
 #include "svg_renderer.hpp"
 #include "frame_renderer.hpp"
@@ -201,7 +202,7 @@ extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_skity_graphic_VkFrameRender_nativeInit(JNIEnv *env, jobject thiz, jint width, jint height,
                                                 jint density, jobject surface) {
-    auto render = new VkRenderer();
+    auto render = new VkFrameRenderer();
 
     ANativeWindow *window = ANativeWindow_fromSurface(env, surface);
 
