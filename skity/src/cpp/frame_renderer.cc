@@ -6,7 +6,7 @@
 
 #include <utility>
 
-double skity_get_time() {
+static double skity_get_time() {
     struct timespec res = {};
     clock_gettime(CLOCK_REALTIME, &res);
 

@@ -271,3 +271,84 @@ Java_com_skity_graphic_VkSVGRenderer_nativeInitSVGDom(JNIEnv *env, jobject thiz,
 
     AAsset_close(svg_asset);
 }
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_skity_graphic_VkFrameRender_nativeInitTypeface(JNIEnv *env, jobject thiz, jlong handler,
+                                                        jobject asset_manager) {
+    auto render = (VkFrameRenderer *) handler;
+
+    auto am = AAssetManager_fromJava(env, asset_manager);
+
+    auto font_asset = AAssetManager_open(am, SKITY_DEFAULT_FONT, AASSET_MODE_BUFFER);
+
+    if (!font_asset) {
+        return;
+    }
+
+    const void *buf = AAsset_getBuffer(font_asset);
+    ssize_t length = AAsset_getLength(font_asset);
+
+    auto font_data = skity::Data::MakeWithCopy(buf, length);
+
+    render->set_default_typeface(skity::Typeface::MakeFromData(font_data));
+
+    AAsset_close(font_asset);
+
+
+    font_asset = AAssetManager_open(am, "Roboto-Regular.ttf", AASSET_MODE_BUFFER);
+
+    auto emoji_asset = AAssetManager_open(am, "NotoEmoji-Regular.ttf", AASSET_MODE_BUFFER);
+
+    if (!font_asset || !emoji_asset) {
+        return;
+    }
+
+    buf = AAsset_getBuffer(font_asset);
+    length = AAsset_getLength(font_asset);
+
+    auto emoji_buf = AAsset_getBuffer(emoji_asset);
+    auto emoji_buf_length = AAsset_getLength(emoji_asset);
+
+    font_data = skity::Data::MakeWithCopy(buf, length);
+
+    auto emoji_font_data = skity::Data::MakeWithCopy(emoji_buf, emoji_buf_length);
+
+    render->init_render_typeface(skity::Typeface::MakeFromData(font_data),
+                                 skity::Typeface::MakeFromData(emoji_font_data));
+
+    AAsset_close(font_asset);
+    AAsset_close(emoji_asset);
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_skity_graphic_VkFrameRender_nativeInitImages(JNIEnv *env, jobject thiz,
+                                                      jlong native_handle, jobject images) {
+    auto list_class = env->GetObjectClass(images);
+    auto size_method = env->GetMethodID(list_class, "size", "()I");
+    auto get_method = env->GetMethodID(list_class, "get", "(I)Ljava/lang/Object;");
+
+    std::vector<std::shared_ptr<skity::Pixmap>> skity_images = {};
+
+    int size = env->CallIntMethod(images, size_method);
+    for (int i = 0; i < size; i++) {
+        auto bitmap = env->CallObjectMethod(images, get_method, i);
+
+        AndroidBitmapInfo info;
+        AndroidBitmap_getInfo(env, bitmap, &info);
+
+        void *addr = nullptr;
+        AndroidBitmap_lockPixels(env, bitmap, &addr);
+
+        auto data = skity::Data::MakeWithCopy(addr, info.height * info.stride);
+
+        skity_images.emplace_back(std::make_shared<skity::Pixmap>(
+                data, info.stride, info.width, info.height
+        ));
+
+        AndroidBitmap_unlockPixels(env, bitmap);
+    }
+
+    auto render = (VkFrameRenderer *) native_handle;
+
+    render->init_images(skity_images);
+}

@@ -105,7 +105,7 @@ void VkRenderer::init(int w, int h, int d, ANativeWindow *window) {
     density_ = d;
     window_ = window;
     init_vk(window);
-    this->proc_loader = (void*) vkGetDeviceProcAddr;
+    this->proc_loader = (void *) vkGetDeviceProcAddr;
     canvas_ = skity::Canvas::MakeHardwareAccelationCanvas(width_, height_, density_, this);
 }
 
@@ -322,8 +322,9 @@ void VkRenderer::create_vk_instance() {
     create_info.pApplicationInfo = &app_info;
     create_info.enabledExtensionCount = instance_ext.size();
     create_info.ppEnabledExtensionNames = instance_ext.data();
-    create_info.enabledLayerCount = 1;
-    create_info.ppEnabledLayerNames = layers;
+    // validation layer cause performance issue
+//    create_info.enabledLayerCount = 1;
+//    create_info.ppEnabledLayerNames = layers;
 
     CALL_VK(vkCreateInstance(&create_info, nullptr, &vk_instance_));
 
@@ -579,6 +580,7 @@ void VkRenderer::create_swap_chain_views() {
         img_create_info.mipLevels = 1;
         img_create_info.arrayLayers = 1;
         img_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+        img_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         img_create_info.samples = vk_sample_count_;
         img_create_info.usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -877,6 +879,17 @@ void VkRenderer::recreate_swap_chain() {
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vk_phy_device_, vk_surface_, &capabilities);
     pretransform_flag_ = capabilities.currentTransform;
 
+    uint32_t width = capabilities.currentExtent.width;
+    uint32_t height = capabilities.currentExtent.height;
+    if (capabilities.currentTransform & VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR ||
+        capabilities.currentTransform & VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR) {
+        // Swap to get identity width and height
+        capabilities.currentExtent.height = width;
+        capabilities.currentExtent.width = height;
+    }
+
+    swap_chain_extend_ = capabilities.currentExtent;
+
 
     VkSwapchainCreateInfoKHR create_info{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     create_info.surface = vk_surface_;
@@ -968,6 +981,6 @@ VkFormat VkRenderer::GetDepthStencilFormat() {
     return depth_stencil_format_;
 }
 
-VkSurfaceTransformFlagBitsKHR VkRenderer::GetSurfaceTransform()  {
-return vk_surface_transform_;
+VkSurfaceTransformFlagBitsKHR VkRenderer::GetSurfaceTransform() {
+    return vk_surface_transform_;
 }
