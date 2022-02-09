@@ -154,9 +154,14 @@ void VkRenderer::destroy() {
 }
 
 void VkRenderer::draw() {
+    CALL_VK(vkWaitForFences(vk_device_, 1, &cmd_fences_[0], VK_TRUE,
+                            std::numeric_limits<uint64_t>::max()));
+
+    CALL_VK(vkResetFences(vk_device_, 1, &cmd_fences_[0]));
+
     VkResult result = vkAcquireNextImageKHR(vk_device_, vk_swap_chain_,
                                             UINT64_MAX,
-                                            present_semaphore_[frame_index_],
+                                            present_semaphore_[0],
                                             VK_NULL_HANDLE, &current_frame_);
 
 
@@ -174,7 +179,7 @@ void VkRenderer::draw() {
 
         result = vkAcquireNextImageKHR(vk_device_, vk_swap_chain_,
                                        UINT64_MAX,
-                                       present_semaphore_[frame_index_],
+                                       present_semaphore_[0],
                                        VK_NULL_HANDLE, &current_frame_);
         assert(result == VK_SUCCESS);
     } else if (result != VK_SUCCESS) {
@@ -224,24 +229,19 @@ void VkRenderer::draw() {
     VkSubmitInfo submit_info{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit_info.pWaitDstStageMask = &submit_pipeline_stages;
     submit_info.waitSemaphoreCount = 1;
-    submit_info.pWaitSemaphores = &present_semaphore_[frame_index_];
+    submit_info.pWaitSemaphores = &present_semaphore_[0];
     submit_info.signalSemaphoreCount = 1;
-    submit_info.pSignalSemaphores = &render_semaphore_[frame_index_];
+    submit_info.pSignalSemaphores = &render_semaphore_[0];
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &current_cmd;
 
-    vkResetFences(vk_device_, 1, &cmd_fences_[current_frame_]);
-
-    CALL_VK(vkQueueSubmit(vk_present_queue_, 1, &submit_info, cmd_fences_[current_frame_]));
-
-    CALL_VK(vkWaitForFences(vk_device_, 1, &cmd_fences_[current_frame_], VK_TRUE,
-                            std::numeric_limits<uint64_t>::max()));
+    CALL_VK(vkQueueSubmit(vk_graphic_queue_, 1, &submit_info, cmd_fences_[0]));
 
     VkPresentInfoKHR present_info{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     present_info.swapchainCount = 1;
     present_info.pSwapchains = &vk_swap_chain_;
     present_info.pImageIndices = &current_frame_;
-    present_info.pWaitSemaphores = &render_semaphore_[frame_index_];
+    present_info.pWaitSemaphores = &render_semaphore_[0];
     present_info.waitSemaphoreCount = 1;
 
     result = vkQueuePresentKHR(vk_present_queue_, &present_info);
