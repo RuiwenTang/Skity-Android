@@ -41,6 +41,8 @@ public:
 
     VkPhysicalDevice GetPhysicalDevice() override;
 
+    VkPhysicalDeviceFeatures GetPhysicalDeviceFeatures() override;
+
     VkDevice GetDevice() override;
 
     VkExtent2D GetFrameExtent() override;
@@ -123,6 +125,7 @@ private:
     std::array<float, 4> clear_color_ = {};
     VkInstance vk_instance_ = {};
     VkPhysicalDevice vk_phy_device_ = {};
+    VkPhysicalDeviceFeatures vk_phy_features_ = {};
     uint32_t graphic_queue_index_ = -1;
     uint32_t present_queue_index_ = -1;
     uint32_t compute_queue_index_ = -1;
