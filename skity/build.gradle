@@ -59,6 +59,8 @@ android {
                 cmake {
                     arguments '-DCMAKE_BUILD_TYPE=Release',
                             '-DCMAKE_SYSTEM_NAME=Android',
+                            '-DBUILD_EXAMPLE=OFF',
+                            '-DVULKAN_BACKEND=ON',
                             '-DANDROID_PLATFORM=android-29',
                             '-DANDROID_STL=c++_shared',
                             '-DANDROID_TOOLCHAIN=clang',
