@@ -28,8 +28,15 @@ find_package(skity CONFIG REQUIRED)
 # for GameActivity/NativeActivity derived applications, the same library name must be
 # used in the AndroidManifest.xml file.
 add_library(${CMAKE_PROJECT_NAME} SHARED
-    # List C/C++ source files with relative paths to this CMakeLists.txt.
-    dev.cpp)
+    jni/native_bridge.cpp
+    common/app_renderer.cpp
+    common/demo_scene_renderer.cpp
+    gles/gl_proc_resolver.cpp
+    gles/gles_render_backend.cpp
+    vulkan/vulkan_render_backend_stub.cpp)
+
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Specifies libraries CMake should link to your target library. You
 # can link libraries from various origins, such as libraries defined in this
@@ -38,4 +45,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     # List libraries link to the target library
     skity::skity
     android
+    EGL
+    GLESv3
+    dl
     log)

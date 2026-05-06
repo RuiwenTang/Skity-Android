@@ -1,6 +1,8 @@
 package org.lynxsdk.lynx.skity.dev.ui
 
 import android.os.Build
+import android.content.pm.PackageManager
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,16 +23,23 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import org.lynxsdk.lynx.skity.dev.BackendType
 import org.lynxsdk.lynx.skity.dev.DemoScene
+import org.lynxsdk.lynx.skity.dev.SkityRenderSurfaceView
 import org.lynxsdk.lynx.skity.dev.SkityNative
 
 @Composable
@@ -102,7 +111,13 @@ fun SceneGalleryScreen() {
         }
         Spacer(Modifier.height(16.dp))
         SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-            PreviewCanvas(scene = scene, backend = backend, modifier = Modifier.fillMaxWidth().height(260.dp))
+            ScenePreviewHost(
+                scene = scene,
+                backend = backend,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+            )
         }
     }
 }
@@ -129,19 +144,35 @@ fun BackendCompareScreen() {
         CardTitle("GLES Preview")
         Spacer(Modifier.height(8.dp))
         SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-            PreviewCanvas(scene = scene, backend = BackendType.GLES, modifier = Modifier.fillMaxWidth().height(220.dp))
+            ScenePreviewHost(
+                scene = scene,
+                backend = BackendType.GLES,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+            )
         }
         Spacer(Modifier.height(18.dp))
         CardTitle("Vulkan Preview")
         Spacer(Modifier.height(8.dp))
         SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-            PreviewCanvas(scene = scene, backend = BackendType.VULKAN, modifier = Modifier.fillMaxWidth().height(220.dp))
+            ScenePreviewHost(
+                scene = scene,
+                backend = BackendType.VULKAN,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+            )
         }
     }
 }
 
 @Composable
 fun CapabilityInfoScreen() {
+    val context = LocalContext.current
+    val packageManager = context.packageManager
+    val hasVulkan = packageManager.hasSystemFeature(PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL)
+    val hasExtensionPack = packageManager.hasSystemFeature(PackageManager.FEATURE_OPENGLES_EXTENSION_PACK)
     val deviceInfo = buildString {
         appendLine("Brand: ${Build.BRAND}")
         appendLine("Model: ${Build.MODEL}")
@@ -150,12 +181,13 @@ fun CapabilityInfoScreen() {
         append("ABIs: ${Build.SUPPORTED_ABIS.joinToString()}")
     }
     val backendInfo = buildString {
-        appendLine("Backend targets to validate:")
-        appendLine("- GLES: OpenGL ES rendering path")
-        appendLine("- Vulkan: Vulkan rendering path")
+        appendLine("Current backend wiring:")
+        appendLine("- GLES: Real skity rendering is active through GLSurfaceView.")
+        appendLine("- Vulkan: UI selector is ready, presenter wiring is still pending.")
         appendLine()
-        appendLine("This app shell is ready for backend switching and scene-based validation.")
-        append("Replace the preview canvas with a skity-backed surface when native rendering is wired in.")
+        appendLine("Platform capabilities:")
+        appendLine("- Vulkan feature: ${if (hasVulkan) "available" else "not reported"}")
+        append("- GLES extension pack: ${if (hasExtensionPack) "available" else "not reported"}")
     }
 
     Column(
@@ -210,6 +242,82 @@ private fun Body(text: String) {
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
     )
+}
+
+@Composable
+private fun ScenePreviewHost(
+    scene: DemoScene,
+    backend: BackendType,
+    modifier: Modifier = Modifier
+) {
+    when (backend) {
+        BackendType.AUTO, BackendType.GLES -> RealGlesPreview(scene = scene, modifier = modifier)
+        BackendType.VULKAN -> PreviewFallback(
+            title = "Vulkan presenter pending",
+            body = "The UI control path is ready, but the Android Vulkan presenter has not been connected to the app shell yet. GLES preview below already uses real skity rendering."
+        )
+    }
+}
+
+@Composable
+private fun RealGlesPreview(
+    scene: DemoScene,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    @Suppress("DEPRECATION")
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val view = remember {
+        SkityRenderSurfaceView(context)
+    }
+
+    DisposableEffect(view, lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> view.onResume()
+                Lifecycle.Event.ON_PAUSE -> view.onPause()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            view.onPause()
+            view.release()
+        }
+    }
+
+    AndroidView(
+        modifier = modifier,
+        factory = {
+            view.apply {
+                setScene(scene)
+            }
+        },
+        update = {
+            it.setScene(scene)
+        }
+    )
+}
+
+@Composable
+private fun PreviewFallback(
+    title: String,
+    body: String
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        PreviewCanvas(
+            scene = DemoScene.TEXT,
+            backend = BackendType.VULKAN,
+            modifier = Modifier.fillMaxSize()
+        )
+        Column(modifier = Modifier.padding(20.dp)) {
+            CardTitle(title)
+            Spacer(Modifier.height(10.dp))
+            Body(body)
+        }
+    }
 }
 
 @Suppress("DEPRECATION")
