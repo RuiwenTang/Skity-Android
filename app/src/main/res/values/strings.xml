@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Skity Lab</string>
+    <string name="launcher_subtitle">A lightweight Android shell for scene preview, backend comparison, and skity integration validation.</string>
+    <string name="title_scene_gallery">Scene Gallery</string>
+    <string name="title_backend_compare">Backend Compare</string>
+    <string name="title_capability_info">Capability Info</string>
+    <string name="scene_gallery_subtitle">Preview a single scene and switch the intended backend target for validation.</string>
+    <string name="backend_compare_subtitle">Keep the same scene visible while comparing GLES and Vulkan expectations side by side.</string>
+    <string name="native_status_title">Native Status</string>
+    <string name="device_info_title">Device Information</string>
+    <string name="backend_info_title">Backend Validation Notes</string>
+    <string name="label_scene">Scene</string>
+    <string name="label_backend">Backend</string>
+    <string name="label_gles">GLES Preview</string>
+    <string name="label_vulkan">Vulkan Preview</string>
+</resources>

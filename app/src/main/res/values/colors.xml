@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_300">#FF90CAF9</color>
+    <color name="brand_500">#FF0F766E</color>
+    <color name="brand_700">#FF134E4A</color>
+    <color name="accent_300">#FFF59E0B</color>
+    <color name="accent_700">#FFB45309</color>
+    <color name="surfaceCanvas">#FFF4F1EA</color>
+    <color name="surfacePanel">#FFFFFBF5</color>
+    <color name="panelStroke">#1F0F172A</color>
+    <color name="inkStrong">#FF172033</color>
+    <color name="inkMuted">#FF5B6475</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
