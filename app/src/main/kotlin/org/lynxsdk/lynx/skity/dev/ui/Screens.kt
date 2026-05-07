@@ -47,6 +47,8 @@ import org.lynxsdk.lynx.skity.dev.SkityRenderSurfaceView
 import org.lynxsdk.lynx.skity.dev.SkityNative
 import org.lynxsdk.lynx.skity.dev.SkityVulkanSurfaceView
 import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
+import org.lynxsdk.lynx.skity.dev.VulkanPresentMode
+import org.lynxsdk.lynx.skity.dev.VulkanPresentModeSettings
 import androidx.compose.runtime.LaunchedEffect
 
 @Composable
@@ -96,6 +98,7 @@ fun SceneGalleryScreen() {
     var backend by remember { mutableStateOf(BackendType.AUTO) }
     val validationRequested = VulkanDebugSettings.validationRequested
     val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
+    val presentMode = VulkanPresentModeSettings.presentMode
 
     Column(
         modifier = Modifier
@@ -134,6 +137,14 @@ fun SceneGalleryScreen() {
             }
         )
         Spacer(Modifier.height(16.dp))
+        VulkanPresentModeCard(
+            presentMode = presentMode,
+            onPresentModeSelected = { mode ->
+                VulkanPresentModeSettings.updatePresentMode(mode)
+                SharedRendererRegistry.vulkanSession.setPresentMode(mode)
+            }
+        )
+        Spacer(Modifier.height(16.dp))
         VulkanValidationCard(
             enabled = validationRequested,
             onEnabledChange = { enabled ->
@@ -155,6 +166,7 @@ fun BackendCompareScreen() {
     var scene by remember { mutableStateOf(DemoScene.SHAPES) }
     val validationRequested = VulkanDebugSettings.validationRequested
     val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
+    val presentMode = VulkanPresentModeSettings.presentMode
 
     Column(
         modifier = Modifier
@@ -178,6 +190,14 @@ fun BackendCompareScreen() {
                 SharedRendererRegistry.vulkanSession.setMsaaSampleCount(
                     RenderQualitySettings.msaaSampleCount
                 )
+            }
+        )
+        Spacer(Modifier.height(16.dp))
+        VulkanPresentModeCard(
+            presentMode = presentMode,
+            onPresentModeSelected = { mode ->
+                VulkanPresentModeSettings.updatePresentMode(mode)
+                SharedRendererRegistry.vulkanSession.setPresentMode(mode)
             }
         )
         Spacer(Modifier.height(16.dp))
@@ -320,6 +340,29 @@ internal fun VulkanValidationCard(
             } else {
                 Body("Release build ignores the Vulkan validation toggle and does not load validation layers.")
             }
+        }
+    }
+}
+
+@Composable
+internal fun VulkanPresentModeCard(
+    presentMode: VulkanPresentMode,
+    onPresentModeSelected: (VulkanPresentMode) -> Unit
+) {
+    SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+        Column {
+            CardTitle("Vulkan Present Mode")
+            Spacer(Modifier.height(10.dp))
+            Body("Choose the requested swapchain present mode for Vulkan previews. Unsupported modes may fall back to FIFO on the device.")
+            Spacer(Modifier.height(12.dp))
+            EnumDropdown(
+                selected = presentMode,
+                values = VulkanPresentMode.entries.toTypedArray(),
+                itemLabel = { it.title },
+                onSelected = onPresentModeSelected
+            )
+            Spacer(Modifier.height(10.dp))
+            Body(presentMode.description)
         }
     }
 }

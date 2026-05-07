@@ -28,6 +28,7 @@ import org.lynxsdk.lynx.skity.dev.DemoScene
 import org.lynxsdk.lynx.skity.dev.RenderQualitySettings
 import org.lynxsdk.lynx.skity.dev.SharedRendererRegistry
 import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
+import org.lynxsdk.lynx.skity.dev.VulkanPresentModeSettings
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -84,6 +85,7 @@ fun PerformanceTestScreen() {
     val samples = remember { mutableStateListOf<BenchmarkSample>() }
     val validationRequested = VulkanDebugSettings.validationRequested
     val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
+    val presentMode = VulkanPresentModeSettings.presentMode
 
     LaunchedEffect(running, duration, statsProvider) {
         if (!running) {
@@ -103,7 +105,7 @@ fun PerformanceTestScreen() {
         running = false
     }
 
-    val summary = remember(samples.toList(), workload, backend, duration, validationRequested) {
+    val summary = remember(samples.toList(), workload, backend, duration, validationRequested, presentMode) {
         buildBenchmarkSummary(
             workload = workload,
             backend = backend,
@@ -162,6 +164,14 @@ fun PerformanceTestScreen() {
                     }
                 )
                 if (backend == BackendType.VULKAN) {
+                    Spacer(Modifier.height(14.dp))
+                    VulkanPresentModeCard(
+                        presentMode = presentMode,
+                        onPresentModeSelected = { mode ->
+                            VulkanPresentModeSettings.updatePresentMode(mode)
+                            SharedRendererRegistry.vulkanSession.setPresentMode(mode)
+                        }
+                    )
                     Spacer(Modifier.height(14.dp))
                     VulkanValidationCard(
                         enabled = validationRequested,
@@ -256,6 +266,9 @@ private fun buildBenchmarkSummary(
             appendLine("Workload: ${workload.title}")
             appendLine("Backend: ${backend.title}")
             appendLine("Duration: ${duration.seconds}s")
+            if (backend == BackendType.VULKAN) {
+                appendLine("Present mode: ${VulkanPresentModeSettings.presentMode.title}")
+            }
             append("Run the benchmark to collect aggregate results.")
         }
     }
@@ -273,6 +286,7 @@ private fun buildBenchmarkSummary(
         appendLine("Backend: ${backend.title}")
         appendLine("Duration: ${duration.seconds}s")
         if (backend == BackendType.VULKAN) {
+            appendLine("Present mode: ${VulkanPresentModeSettings.presentMode.title}")
             appendLine("Validation requested: ${if (validationRequested) "on" else "off"}")
         }
         appendLine("Samples: ${samples.size}")

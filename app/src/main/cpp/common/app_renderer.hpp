@@ -10,7 +10,8 @@ class RenderBackend;
 
 class AppRenderer {
  public:
-  AppRenderer(int backend_type, bool enable_vulkan_validation);
+  AppRenderer(int backend_type, bool enable_vulkan_validation,
+              int vulkan_present_mode);
   ~AppRenderer();
 
   void SetNativeWindow(ANativeWindow* native_window);

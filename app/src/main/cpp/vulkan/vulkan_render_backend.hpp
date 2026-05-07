@@ -1,6 +1,7 @@
 #pragma once
 
 #include <android/native_window.h>
+#include <vulkan/vulkan.h>
 
 #include <atomic>
 #include <memory>
@@ -16,11 +17,11 @@ class GPUNativeWindowVK;
 namespace skity::demo {
 
 std::unique_ptr<RenderBackend> CreateVulkanRenderBackend(
-    bool enable_validation);
+    bool enable_validation, int present_mode);
 
 class VulkanRenderBackend final : public RenderBackend {
  public:
-  explicit VulkanRenderBackend(bool enable_validation);
+  VulkanRenderBackend(bool enable_validation, int present_mode);
   ~VulkanRenderBackend() override;
 
   void SetNativeWindow(ANativeWindow* native_window) override;
@@ -48,6 +49,7 @@ class VulkanRenderBackend final : public RenderBackend {
   uint32_t height_ = 0;
   bool probe_info_loaded_ = false;
   bool validation_enabled_ = false;
+  VkPresentModeKHR present_mode_ = VK_PRESENT_MODE_FIFO_KHR;
 };
 
 }  // namespace skity::demo

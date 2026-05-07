@@ -26,6 +26,21 @@ std::string SafeString(const char* value) {
   return value == nullptr || value[0] == '\0' ? "Unknown" : value;
 }
 
+const char* PresentModeName(int32_t present_mode) {
+  switch (present_mode) {
+    case 0:
+      return "Immediate";
+    case 1:
+      return "Mailbox";
+    case 2:
+      return "FIFO";
+    case 3:
+      return "FIFO Relaxed";
+    default:
+      return "";
+  }
+}
+
 }  // namespace
 
 void RendererDiagnostics::SetBackendName(const char* backend_name) {
@@ -36,6 +51,16 @@ void RendererDiagnostics::SetBackendName(const char* backend_name) {
 void RendererDiagnostics::SetSurfaceName(const char* surface_name) {
   std::lock_guard<std::mutex> lock(mutex_);
   surface_name_ = SafeString(surface_name);
+}
+
+void RendererDiagnostics::SetPresentModeRequest(int32_t present_mode) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  present_mode_request_ = present_mode;
+}
+
+void RendererDiagnostics::SetPresentModeActual(int32_t present_mode) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  present_mode_actual_ = present_mode;
 }
 
 void RendererDiagnostics::SetValidationEnabled(bool enabled) {
@@ -101,6 +126,14 @@ std::string RendererDiagnostics::BuildOverlayText() const {
   stream << "Backend: " << backend_name_ << '\n';
   stream << "Surface: " << surface_name_ << "  " << width_ << "x" << height_
          << '\n';
+  if (const char* request_name = PresentModeName(present_mode_request_);
+      request_name[0] != '\0') {
+    stream << "Present Request: " << request_name << '\n';
+  }
+  if (const char* actual_name = PresentModeName(present_mode_actual_);
+      actual_name[0] != '\0') {
+    stream << "Present Actual: " << actual_name << '\n';
+  }
   stream << "Context: " << (context_ready_ ? "Ready" : "Pending") << '\n';
   stream << "Validation: " << (validation_enabled_ ? "On" : "Off") << '\n';
   stream << "MSAA: " << msaa_sample_count_ << "x" << '\n';

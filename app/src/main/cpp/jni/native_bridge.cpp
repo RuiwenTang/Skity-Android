@@ -32,11 +32,12 @@ Java_org_lynxsdk_lynx_skity_dev_SkityNative_nativeGetStatusSummary(
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_org_lynxsdk_lynx_skity_dev_SkityNative_nativeCreateRenderer(
-    JNIEnv* env, jclass clazz, jint backend_type, jboolean enable_validation) {
+    JNIEnv* env, jclass clazz, jint backend_type, jboolean enable_validation,
+    jint vulkan_present_mode) {
   (void)env;
   (void)clazz;
   return ToHandle(std::make_unique<skity::demo::AppRenderer>(
-      backend_type, enable_validation == JNI_TRUE));
+      backend_type, enable_validation == JNI_TRUE, vulkan_present_mode));
 }
 
 extern "C" JNIEXPORT void JNICALL

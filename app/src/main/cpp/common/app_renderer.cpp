@@ -12,23 +12,14 @@ constexpr int kBackendAuto = 0;
 constexpr int kBackendGles = 1;
 constexpr int kBackendVulkan = 2;
 
-std::unique_ptr<RenderBackend> CreateRenderBackend(int backend_type) {
-  switch (backend_type) {
-    case kBackendVulkan:
-      return CreateVulkanRenderBackend(false);
-    case kBackendAuto:
-    case kBackendGles:
-    default:
-      return CreateGlesRenderBackend();
-  }
-}
-
 std::unique_ptr<RenderBackend> CreateRenderBackend(
     int backend_type,
-    bool enable_vulkan_validation) {
+    bool enable_vulkan_validation,
+    int vulkan_present_mode) {
   switch (backend_type) {
     case kBackendVulkan:
-      return CreateVulkanRenderBackend(enable_vulkan_validation);
+      return CreateVulkanRenderBackend(enable_vulkan_validation,
+                                       vulkan_present_mode);
     case kBackendAuto:
     case kBackendGles:
     default:
@@ -38,9 +29,10 @@ std::unique_ptr<RenderBackend> CreateRenderBackend(
 
 }  // namespace
 
-AppRenderer::AppRenderer(int backend_type, bool enable_vulkan_validation)
-    : backend_(
-          CreateRenderBackend(backend_type, enable_vulkan_validation)) {}
+AppRenderer::AppRenderer(int backend_type, bool enable_vulkan_validation,
+                         int vulkan_present_mode)
+    : backend_(CreateRenderBackend(backend_type, enable_vulkan_validation,
+                                   vulkan_present_mode)) {}
 
 AppRenderer::~AppRenderer() = default;
 

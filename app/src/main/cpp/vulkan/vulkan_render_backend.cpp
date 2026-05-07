@@ -25,16 +25,37 @@ constexpr bool kValidationRuntimeAvailable = false;
 bool ResolveValidationEnabled(bool requested) {
   return kValidationRuntimeAvailable && requested;
 }
-}  // namespace
 
-std::unique_ptr<RenderBackend> CreateVulkanRenderBackend(bool enable_validation) {
-  return std::make_unique<VulkanRenderBackend>(enable_validation);
+constexpr int kPresentModeFifo = 0;
+constexpr int kPresentModeMailbox = 1;
+constexpr int kPresentModeImmediate = 2;
+
+VkPresentModeKHR ResolvePresentMode(int present_mode) {
+  switch (present_mode) {
+    case kPresentModeMailbox:
+      return VK_PRESENT_MODE_MAILBOX_KHR;
+    case kPresentModeImmediate:
+      return VK_PRESENT_MODE_IMMEDIATE_KHR;
+    case kPresentModeFifo:
+    default:
+      return VK_PRESENT_MODE_FIFO_KHR;
+  }
 }
 
-VulkanRenderBackend::VulkanRenderBackend(bool enable_validation)
-    : validation_enabled_(ResolveValidationEnabled(enable_validation)) {
+}  // namespace
+
+std::unique_ptr<RenderBackend> CreateVulkanRenderBackend(bool enable_validation,
+                                                         int present_mode) {
+  return std::make_unique<VulkanRenderBackend>(enable_validation, present_mode);
+}
+
+VulkanRenderBackend::VulkanRenderBackend(bool enable_validation,
+                                         int present_mode)
+    : validation_enabled_(ResolveValidationEnabled(enable_validation)),
+      present_mode_(ResolvePresentMode(present_mode)) {
   diagnostics_.SetBackendName("Vulkan");
   diagnostics_.SetSurfaceName("Swapchain");
+  diagnostics_.SetPresentModeRequest(static_cast<int32_t>(present_mode_));
   diagnostics_.SetValidationEnabled(validation_enabled_);
   diagnostics_.SetMsaaSampleCount(1);
 }
@@ -158,14 +179,21 @@ bool VulkanRenderBackend::EnsureNativeWindow() {
   info.native_window.handle = native_window_handle_;
   info.width = width_;
   info.height = height_;
-  info.present_mode = VK_PRESENT_MODE_FIFO_KHR;
+  info.present_mode = present_mode_;
 
   native_window_ = skity::CreateGPUNativeWindowVK(context_.get(), &info);
+  if (native_window_ != nullptr && native_window_->GetPresenter() != nullptr) {
+    diagnostics_.SetPresentModeActual(
+        native_window_->GetPresenter()->GetPresentMode());
+  } else {
+    diagnostics_.SetPresentModeActual(0);
+  }
   return native_window_ != nullptr;
 }
 
 void VulkanRenderBackend::ResetNativeWindow() {
   native_window_.reset();
+  diagnostics_.SetPresentModeActual(0);
   if (native_window_handle_ != nullptr) {
     ANativeWindow_release(native_window_handle_);
     native_window_handle_ = nullptr;
