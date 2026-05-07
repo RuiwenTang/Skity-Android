@@ -42,6 +42,7 @@ class SkityRenderSurfaceView @JvmOverloads constructor(
 
         fun release() {
             if (rendererHandle != 0L) {
+                SkityNative.onSurfaceDestroyed(rendererHandle)
                 SkityNative.destroyRenderer(rendererHandle)
                 rendererHandle = 0L
             }
@@ -52,7 +53,7 @@ class SkityRenderSurfaceView @JvmOverloads constructor(
             config: javax.microedition.khronos.egl.EGLConfig?
         ) {
             if (rendererHandle == 0L) {
-                rendererHandle = SkityNative.createRenderer()
+                rendererHandle = SkityNative.createRenderer(BackendType.GLES)
             }
             SkityNative.setScene(rendererHandle, scene.ordinal)
             SkityNative.onSurfaceCreated(rendererHandle)

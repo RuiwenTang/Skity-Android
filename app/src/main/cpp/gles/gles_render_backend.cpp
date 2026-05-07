@@ -21,6 +21,10 @@ GlesRenderBackend::GlesRenderBackend() = default;
 
 GlesRenderBackend::~GlesRenderBackend() = default;
 
+void GlesRenderBackend::SetNativeWindow(ANativeWindow* native_window) {
+  (void)native_window;
+}
+
 void GlesRenderBackend::OnSurfaceCreated() {
   if (context_ != nullptr) {
     return;
@@ -28,6 +32,12 @@ void GlesRenderBackend::OnSurfaceCreated() {
 
   context_ = skity::GLContextCreate(
       reinterpret_cast<void*>(ResolveGLProcAddress));
+}
+
+void GlesRenderBackend::OnSurfaceDestroyed() {
+  context_.reset();
+  width_ = 0;
+  height_ = 0;
 }
 
 void GlesRenderBackend::OnSurfaceChanged(int width, int height) {
@@ -73,7 +83,8 @@ void GlesRenderBackend::DrawFrame() {
     return;
   }
 
-  DrawDemoScene(canvas, static_cast<DemoScene>(scene_.load()), width_, height_);
+  DrawDemoScene(canvas, static_cast<DemoScene>(scene_.load()),
+                DemoBackend::kGles, false, width_, height_);
   canvas->Flush();
   surface->Flush();
 }

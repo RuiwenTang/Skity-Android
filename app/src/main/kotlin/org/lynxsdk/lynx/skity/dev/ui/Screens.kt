@@ -41,6 +41,7 @@ import org.lynxsdk.lynx.skity.dev.BackendType
 import org.lynxsdk.lynx.skity.dev.DemoScene
 import org.lynxsdk.lynx.skity.dev.SkityRenderSurfaceView
 import org.lynxsdk.lynx.skity.dev.SkityNative
+import org.lynxsdk.lynx.skity.dev.SkityVulkanSurfaceView
 
 @Composable
 fun LauncherScreen(
@@ -183,7 +184,7 @@ fun CapabilityInfoScreen() {
     val backendInfo = buildString {
         appendLine("Current backend wiring:")
         appendLine("- GLES: Real skity rendering is active through GLSurfaceView.")
-        appendLine("- Vulkan: UI selector is ready, presenter wiring is still pending.")
+        appendLine("- Vulkan: Real skity rendering is active through SurfaceView when device support is available.")
         appendLine()
         appendLine("Platform capabilities:")
         appendLine("- Vulkan feature: ${if (hasVulkan) "available" else "not reported"}")
@@ -250,12 +251,18 @@ private fun ScenePreviewHost(
     backend: BackendType,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val supportsVulkan = context.packageManager.hasSystemFeature(PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL)
     when (backend) {
         BackendType.AUTO, BackendType.GLES -> RealGlesPreview(scene = scene, modifier = modifier)
-        BackendType.VULKAN -> PreviewFallback(
-            title = "Vulkan presenter pending",
-            body = "The UI control path is ready, but the Android Vulkan presenter has not been connected to the app shell yet. GLES preview below already uses real skity rendering."
-        )
+        BackendType.VULKAN -> if (supportsVulkan) {
+            RealVulkanPreview(scene = scene, modifier = modifier)
+        } else {
+            PreviewFallback(
+                title = "Vulkan unavailable",
+                body = "This device does not report Vulkan window-system support, so the Vulkan preview stays in fallback mode."
+            )
+        }
     }
 }
 
@@ -284,6 +291,48 @@ private fun RealGlesPreview(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             view.onPause()
+            view.release()
+        }
+    }
+
+    AndroidView(
+        modifier = modifier,
+        factory = {
+            view.apply {
+                setScene(scene)
+            }
+        },
+        update = {
+            it.setScene(scene)
+        }
+    )
+}
+
+@Composable
+private fun RealVulkanPreview(
+    scene: DemoScene,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    @Suppress("DEPRECATION")
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val view = remember {
+        SkityVulkanSurfaceView(context)
+    }
+
+    DisposableEffect(view, lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> view.onResumeRendering()
+                Lifecycle.Event.ON_PAUSE -> view.onPauseRendering()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            view.onPauseRendering()
             view.release()
         }
     }

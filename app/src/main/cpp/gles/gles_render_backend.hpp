@@ -18,7 +18,9 @@ class GlesRenderBackend final : public RenderBackend {
   GlesRenderBackend();
   ~GlesRenderBackend() override;
 
+  void SetNativeWindow(ANativeWindow* native_window) override;
   void OnSurfaceCreated() override;
+  void OnSurfaceDestroyed() override;
   void OnSurfaceChanged(int width, int height) override;
   void SetScene(int scene) override;
   void DrawFrame() override;

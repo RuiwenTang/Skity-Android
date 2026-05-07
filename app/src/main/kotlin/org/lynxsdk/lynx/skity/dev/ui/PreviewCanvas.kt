@@ -46,7 +46,7 @@ fun PreviewCanvas(
                 DemoScene.SHAPES -> drawShapesScene()
                 DemoScene.PATHS -> drawPathsScene()
                 DemoScene.GRADIENTS -> drawGradientsScene()
-                DemoScene.TEXT -> drawTextScene()
+                DemoScene.TEXT -> drawTextScene(backend)
                 DemoScene.IMAGE -> drawImageScene()
             }
 
@@ -75,6 +75,66 @@ fun PreviewCanvas(
                 .align(Alignment.TopEnd)
                 .padding(end = 20.dp, top = 20.dp)
         )
+
+        if (scene == DemoScene.TEXT) {
+            val backendLabel = when (backend) {
+                BackendType.VULKAN -> "Vulkan"
+                BackendType.GLES -> "OpenGL ES"
+                BackendType.AUTO -> "Auto"
+            }
+            val surfaceLabel = when (backend) {
+                BackendType.VULKAN -> "Swapchain"
+                BackendType.GLES -> "Framebuffer"
+                BackendType.AUTO -> "Auto"
+            }
+            val validationLabel = when (backend) {
+                BackendType.VULKAN -> "Requested"
+                BackendType.GLES, BackendType.AUTO -> "Off"
+            }
+
+            Text(
+                text = "Skity",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 48.dp, top = 110.dp)
+            )
+            Text(
+                text = "Backend rendering preview",
+                color = Color(0xFF94A3B8),
+                fontSize = 16.sp,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 48.dp, top = 156.dp)
+            )
+            Text(
+                text = "Backend: $backendLabel",
+                color = Color(0xFF38BDF8),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 48.dp, top = 196.dp)
+            )
+            Text(
+                text = "Surface: $surfaceLabel",
+                color = Color(0xFFC7D2FE),
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 48.dp, top = 228.dp)
+            )
+            Text(
+                text = "Validation: $validationLabel",
+                color = Color(0xFFC7D2FE),
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 48.dp, top = 250.dp)
+            )
+        }
     }
 }
 
@@ -171,7 +231,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGradientsScene(
     )
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTextScene() {
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTextScene(backend: BackendType) {
     drawRoundRect(
         color = Color(0xFF0F172A),
         topLeft = Offset(size.width * 0.10f, size.height * 0.16f),

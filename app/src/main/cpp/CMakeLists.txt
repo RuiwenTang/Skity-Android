@@ -33,7 +33,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     common/demo_scene_renderer.cpp
     gles/gl_proc_resolver.cpp
     gles/gles_render_backend.cpp
-    vulkan/vulkan_render_backend_stub.cpp)
+    vulkan/vulkan_render_backend.cpp)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR})
@@ -48,4 +48,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     EGL
     GLESv3
     dl
+    vulkan
     log)

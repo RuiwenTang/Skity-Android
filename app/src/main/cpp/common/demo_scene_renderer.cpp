@@ -18,6 +18,34 @@ Rect MakeRect(float left, float top, float right, float bottom) {
   return Rect(left, top, right, bottom);
 }
 
+const char* BackendTitle(DemoBackend backend) {
+  switch (backend) {
+    case DemoBackend::kVulkan:
+      return "Vulkan";
+    case DemoBackend::kGles:
+      return "OpenGL ES";
+    case DemoBackend::kAuto:
+    default:
+      return "Auto";
+  }
+}
+
+const char* SurfaceTitle(DemoBackend backend) {
+  switch (backend) {
+    case DemoBackend::kVulkan:
+      return "Swapchain";
+    case DemoBackend::kGles:
+      return "Framebuffer";
+    case DemoBackend::kAuto:
+    default:
+      return "Auto";
+  }
+}
+
+const char* ValidationTitle(bool validation_enabled) {
+  return validation_enabled ? "On" : "Off";
+}
+
 void DrawClearScene(Canvas* canvas, int width, int height) {
   Paint paint;
   paint.SetAntiAlias(true);
@@ -101,7 +129,8 @@ void DrawGradientsScene(Canvas* canvas, int width, int height) {
   canvas->DrawCircle(width * 0.72f, height * 0.68f, 52.f, cool);
 }
 
-void DrawTextScene(Canvas* canvas, int width, int height) {
+void DrawTextScene(Canvas* canvas, DemoBackend backend, bool validation_enabled,
+                   int width, int height) {
   Paint panel;
   panel.SetAntiAlias(true);
   panel.SetColor(Argb(0xFF, 0x0F, 0x17, 0x2A));
@@ -119,15 +148,29 @@ void DrawTextScene(Canvas* canvas, int width, int height) {
   body.SetAntiAlias(true);
   body.SetColor(Argb(0xFF, 0x94, 0xA3, 0xB8));
   body.SetTextSize(16.f);
-  canvas->DrawSimpleText2("Android rendering preview", width * 0.16f,
+  canvas->DrawSimpleText2("Backend rendering preview", width * 0.16f,
                           height * 0.56f, body);
 
   Paint badge;
   badge.SetAntiAlias(true);
   badge.SetColor(Argb(0xFF, 0x38, 0xBD, 0xF8));
   badge.SetTextSize(20.f);
-  canvas->DrawSimpleText2("Real skity + GLES output", width * 0.16f,
+  canvas->DrawSimpleText2(
+      (std::string("Backend: ") + BackendTitle(backend)).c_str(),
+      width * 0.16f,
                           height * 0.70f, badge);
+
+  Paint meta;
+  meta.SetAntiAlias(true);
+  meta.SetColor(Argb(0xFF, 0xC7, 0xD2, 0xFE));
+  meta.SetTextSize(14.f);
+  canvas->DrawSimpleText2(
+      (std::string("Surface: ") + SurfaceTitle(backend)).c_str(),
+      width * 0.16f, height * 0.80f, meta);
+  canvas->DrawSimpleText2(
+      (std::string("Validation: ") + ValidationTitle(validation_enabled))
+          .c_str(),
+      width * 0.16f, height * 0.88f, meta);
 }
 
 void DrawImageScene(Canvas* canvas, int width, int height) {
@@ -171,7 +214,8 @@ void DrawImageScene(Canvas* canvas, int width, int height) {
 
 }  // namespace
 
-void DrawDemoScene(Canvas* canvas, DemoScene scene, int width, int height) {
+void DrawDemoScene(Canvas* canvas, DemoScene scene, DemoBackend backend,
+                   bool validation_enabled, int width, int height) {
   canvas->Clear(Argb(0xFF, 0x0B, 0x13, 0x2B));
 
   switch (scene) {
@@ -188,7 +232,7 @@ void DrawDemoScene(Canvas* canvas, DemoScene scene, int width, int height) {
       DrawGradientsScene(canvas, width, height);
       break;
     case DemoScene::kText:
-      DrawTextScene(canvas, width, height);
+      DrawTextScene(canvas, backend, validation_enabled, width, height);
       break;
     case DemoScene::kImage:
       DrawImageScene(canvas, width, height);

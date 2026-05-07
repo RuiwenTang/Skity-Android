@@ -28,8 +28,20 @@ android {
     }
 
     buildTypes {
+        debug {
+            externalNativeBuild {
+                cmake {
+                    cppFlags += "-DSKITY_DEV_ENABLE_VULKAN_VALIDATION=1"
+                }
+            }
+        }
         release {
             isMinifyEnabled = false
+            externalNativeBuild {
+                cmake {
+                    cppFlags += "-DSKITY_DEV_ENABLE_VULKAN_VALIDATION=0"
+                }
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -1,5 +1,7 @@
 package org.lynxsdk.lynx.skity.dev
 
+import android.view.Surface
+
 object SkityNative {
     private var loaded = false
     private var loadError = ""
@@ -24,10 +26,14 @@ object SkityNative {
         return nativeGetStatusSummary()
     }
 
-    fun createRenderer(): Long = nativeCreateRenderer()
+    fun createRenderer(backend: BackendType): Long = nativeCreateRenderer(backend.ordinal)
 
     fun destroyRenderer(handle: Long) {
         nativeDestroyRenderer(handle)
+    }
+
+    fun setSurface(handle: Long, surface: Surface?) {
+        nativeSetSurface(handle, surface)
     }
 
     fun setScene(handle: Long, scene: Int) {
@@ -36,6 +42,10 @@ object SkityNative {
 
     fun onSurfaceCreated(handle: Long) {
         nativeOnSurfaceCreated(handle)
+    }
+
+    fun onSurfaceDestroyed(handle: Long) {
+        nativeOnSurfaceDestroyed(handle)
     }
 
     fun onSurfaceChanged(handle: Long, width: Int, height: Int) {
@@ -50,16 +60,22 @@ object SkityNative {
     private external fun nativeGetStatusSummary(): String
 
     @JvmStatic
-    private external fun nativeCreateRenderer(): Long
+    private external fun nativeCreateRenderer(backendType: Int): Long
 
     @JvmStatic
     private external fun nativeDestroyRenderer(handle: Long)
+
+    @JvmStatic
+    private external fun nativeSetSurface(handle: Long, surface: Surface?)
 
     @JvmStatic
     private external fun nativeSetScene(handle: Long, scene: Int)
 
     @JvmStatic
     private external fun nativeOnSurfaceCreated(handle: Long)
+
+    @JvmStatic
+    private external fun nativeOnSurfaceDestroyed(handle: Long)
 
     @JvmStatic
     private external fun nativeOnSurfaceChanged(handle: Long, width: Int, height: Int)
