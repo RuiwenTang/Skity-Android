@@ -37,6 +37,8 @@ class SharedVulkanRendererSession {
 
     @Volatile
     private var currentHeight = 0
+    @Volatile
+    private var msaaSampleCount = 1
 
     private var rendererHandle: Long = 0L
     @Volatile
@@ -63,6 +65,7 @@ class SharedVulkanRendererSession {
             ensureRenderer()
             SkityNative.setSurface(rendererHandle, surface)
             SkityNative.setScene(rendererHandle, scene.ordinal)
+            SkityNative.setMsaaSampleCount(rendererHandle, msaaSampleCount)
             SkityNative.onSurfaceCreated(rendererHandle)
             surfaceReady = true
             requestFrame()
@@ -121,12 +124,22 @@ class SharedVulkanRendererSession {
         }
     }
 
+    fun setMsaaSampleCount(sampleCount: Int) {
+        msaaSampleCount = sampleCount
+        renderHandler.post {
+            if (rendererHandle != 0L) {
+                SkityNative.setMsaaSampleCount(rendererHandle, sampleCount)
+            }
+        }
+    }
+
     private fun ensureRenderer() {
         if (rendererHandle == 0L) {
             rendererHandle = SkityNative.createRenderer(
                 backend = BackendType.VULKAN,
                 enableVulkanValidation = validationRequested
             )
+            SkityNative.setMsaaSampleCount(rendererHandle, msaaSampleCount)
         }
     }
 

@@ -43,6 +43,11 @@ void RendererDiagnostics::SetValidationEnabled(bool enabled) {
   validation_enabled_ = enabled;
 }
 
+void RendererDiagnostics::SetMsaaSampleCount(int sample_count) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  msaa_sample_count_ = sample_count <= 1 ? 1 : sample_count;
+}
+
 void RendererDiagnostics::SetContextReady(bool ready) {
   std::lock_guard<std::mutex> lock(mutex_);
   context_ready_ = ready;
@@ -98,6 +103,7 @@ std::string RendererDiagnostics::BuildOverlayText() const {
          << '\n';
   stream << "Context: " << (context_ready_ ? "Ready" : "Pending") << '\n';
   stream << "Validation: " << (validation_enabled_ ? "On" : "Off") << '\n';
+  stream << "MSAA: " << msaa_sample_count_ << "x" << '\n';
   stream << "FPS: " << fps_ << "  Frame: " << frame_time_ms_ << " ms" << '\n';
   stream << "Frames: " << frames_drawn_ << '\n';
   stream << "GPU: " << gpu_renderer_ << '\n';

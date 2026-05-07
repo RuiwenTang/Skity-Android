@@ -1,6 +1,7 @@
 #include "common/demo_scene_renderer.hpp"
 
 #include <cstdint>
+#include <string>
 
 #include <skity/graphic/color.hpp>
 #include <skity/graphic/paint.hpp>
@@ -212,6 +213,384 @@ void DrawImageScene(Canvas* canvas, int width, int height) {
       14.f, 14.f, accent);
 }
 
+void DrawArcsScene(Canvas* canvas, int width, int height) {
+  Paint fill;
+  fill.SetAntiAlias(true);
+  fill.SetColor(Argb(0xD8, 0xFF, 0x7F, 0x50));
+  canvas->DrawArc(MakeRect(width * 0.12f, height * 0.18f, width * 0.46f,
+                           height * 0.56f),
+                  20.f, 280.f, true, fill);
+
+  fill.SetColor(Argb(0xCC, 0x4D, 0xC3, 0xFF));
+  canvas->DrawArc(MakeRect(width * 0.42f, height * 0.16f, width * 0.84f,
+                           height * 0.52f),
+                  -40.f, 220.f, false, fill);
+
+  Paint stroke;
+  stroke.SetAntiAlias(true);
+  stroke.SetStyle(Paint::kStroke_Style);
+  stroke.SetStrokeWidth(6.f);
+  stroke.SetStrokeColor(Argb(0xFF, 0xFF, 0xE6, 0x6D));
+  canvas->DrawOval(
+      MakeRect(width * 0.16f, height * 0.58f, width * 0.44f, height * 0.82f),
+      stroke);
+  stroke.SetStrokeColor(Argb(0xFF, 0x70, 0xC1, 0xB3));
+  canvas->DrawArc(MakeRect(width * 0.48f, height * 0.56f, width * 0.84f,
+                           height * 0.84f),
+                  35.f, 250.f, false, stroke);
+}
+
+void DrawTransformsScene(Canvas* canvas, int width, int height) {
+  Paint frame;
+  frame.SetAntiAlias(true);
+  frame.SetStyle(Paint::kStroke_Style);
+  frame.SetStrokeWidth(2.f);
+  frame.SetStrokeColor(Argb(0x66, 0xFF, 0xFF, 0xFF));
+  canvas->DrawRoundRect(
+      MakeRect(width * 0.10f, height * 0.14f, width * 0.90f, height * 0.86f),
+      20.f, 20.f, frame);
+
+  for (int index = 0; index < 8; ++index) {
+    Paint fill;
+    fill.SetAntiAlias(true);
+    fill.SetColor(Argb(static_cast<uint8_t>(160 - index * 10),
+                       static_cast<uint8_t>(80 + index * 18),
+                       static_cast<uint8_t>(210 - index * 12),
+                       static_cast<uint8_t>(120 + index * 8)));
+    canvas->Save();
+    canvas->Translate(width * 0.50f, height * 0.50f);
+    canvas->Rotate(index * 16.f);
+    const float scale = 1.f - index * 0.08f;
+    canvas->Scale(scale, scale);
+    canvas->DrawRoundRect(
+        MakeRect(-width * 0.22f, -height * 0.12f, width * 0.22f,
+                 height * 0.12f),
+        18.f, 18.f, fill);
+    canvas->Restore();
+  }
+}
+
+void DrawStrokesScene(Canvas* canvas, int width, int height) {
+  const Paint::Cap caps[] = {Paint::kButt_Cap, Paint::kRound_Cap,
+                             Paint::kSquare_Cap};
+  const Paint::Join joins[] = {Paint::kMiter_Join, Paint::kRound_Join,
+                               Paint::kBevel_Join};
+
+  for (int row = 0; row < 3; ++row) {
+    Paint line;
+    line.SetAntiAlias(true);
+    line.SetStyle(Paint::kStroke_Style);
+    line.SetStrokeWidth(8.f + row * 4.f);
+    line.SetStrokeCap(caps[row]);
+    line.SetStrokeColor(Argb(0xFF, static_cast<uint8_t>(90 + row * 50), 0xD8,
+                             static_cast<uint8_t>(110 + row * 30)));
+    canvas->DrawLine(width * 0.14f, height * (0.24f + row * 0.15f),
+                     width * 0.44f, height * (0.24f + row * 0.15f), line);
+
+    Paint path_paint = line;
+    path_paint.SetStrokeJoin(joins[row]);
+    Path corner;
+    corner.MoveTo(width * 0.58f, height * (0.18f + row * 0.20f));
+    corner.LineTo(width * 0.72f, height * (0.08f + row * 0.20f));
+    corner.LineTo(width * 0.84f, height * (0.22f + row * 0.20f));
+    canvas->DrawPath(corner, path_paint);
+  }
+}
+
+void DrawTilingScene(Canvas* canvas, int width, int height) {
+  const float left = width * 0.10f;
+  const float top = height * 0.16f;
+  const float tile_width = width * 0.17f;
+  const float tile_height = height * 0.16f;
+
+  for (int row = 0; row < 4; ++row) {
+    for (int col = 0; col < 4; ++col) {
+      const float x = left + col * (tile_width + width * 0.02f);
+      const float y = top + row * (tile_height + height * 0.03f);
+
+      Paint tile;
+      tile.SetAntiAlias(true);
+      tile.SetColor(Argb(0xFF, static_cast<uint8_t>(50 + row * 35),
+                         static_cast<uint8_t>(90 + col * 28),
+                         static_cast<uint8_t>(160 + (row + col) * 10)));
+      canvas->DrawRoundRect(MakeRect(x, y, x + tile_width, y + tile_height),
+                            14.f, 14.f, tile);
+
+      Paint accent;
+      accent.SetAntiAlias(true);
+      accent.SetColor(Argb(0xCC, 0xFF, 0xF4, 0xD6));
+      canvas->DrawCircle(x + tile_width * 0.30f, y + tile_height * 0.34f, 12.f,
+                         accent);
+      accent.SetColor(Argb(0xD0, 0x15, 0x1F, 0x30));
+      canvas->DrawLine(x + tile_width * 0.18f, y + tile_height * 0.72f,
+                       x + tile_width * 0.82f, y + tile_height * 0.72f,
+                       accent);
+    }
+  }
+}
+
+void DrawClipsScene(Canvas* canvas, int width, int height) {
+  Paint bg;
+  bg.SetAntiAlias(true);
+  bg.SetColor(Argb(0xFF, 0x13, 0x20, 0x3A));
+  canvas->DrawRoundRect(
+      MakeRect(width * 0.08f, height * 0.12f, width * 0.92f, height * 0.88f),
+      24.f, 24.f, bg);
+
+  canvas->Save();
+  canvas->ClipRect(
+      MakeRect(width * 0.14f, height * 0.20f, width * 0.54f, height * 0.76f));
+  for (int index = 0; index < 8; ++index) {
+    Paint band;
+    band.SetAntiAlias(true);
+    band.SetColor(Argb(static_cast<uint8_t>(180 - index * 12),
+                       static_cast<uint8_t>(50 + index * 18),
+                       static_cast<uint8_t>(120 + index * 10),
+                       static_cast<uint8_t>(220 - index * 16)));
+    canvas->Save();
+    canvas->Translate(width * 0.20f + index * 14.f, height * 0.24f);
+    canvas->Rotate(7.f * index);
+    canvas->DrawRoundRect(MakeRect(0.f, 0.f, width * 0.30f, height * 0.42f),
+                          18.f, 18.f, band);
+    canvas->Restore();
+  }
+  canvas->Restore();
+
+  canvas->Save();
+  Path clip_path;
+  clip_path.MoveTo(width * 0.60f, height * 0.18f);
+  clip_path.CubicTo(width * 0.90f, height * 0.22f, width * 0.86f,
+                    height * 0.76f, width * 0.62f, height * 0.82f);
+  clip_path.CubicTo(width * 0.48f, height * 0.70f, width * 0.46f,
+                    height * 0.30f, width * 0.60f, height * 0.18f);
+  canvas->ClipPath(clip_path);
+  for (int row = 0; row < 7; ++row) {
+    for (int col = 0; col < 4; ++col) {
+      Paint tile;
+      tile.SetAntiAlias(true);
+      tile.SetColor(Argb(0xCC, static_cast<uint8_t>(90 + row * 16),
+                         static_cast<uint8_t>(160 - col * 20),
+                         static_cast<uint8_t>(100 + col * 24)));
+      canvas->DrawCircle(width * 0.58f + col * 42.f, height * 0.24f + row * 42.f,
+                         22.f + (row % 2) * 4.f, tile);
+    }
+  }
+  canvas->Restore();
+}
+
+void DrawLayersScene(Canvas* canvas, int width, int height) {
+  Paint bg;
+  bg.SetAntiAlias(true);
+  bg.SetColor(Argb(0xFF, 0x10, 0x17, 0x2F));
+  canvas->DrawRoundRect(
+      MakeRect(width * 0.08f, height * 0.12f, width * 0.92f, height * 0.88f),
+      22.f, 22.f, bg);
+
+  for (int layer = 0; layer < 6; ++layer) {
+    Paint layer_paint;
+    layer_paint.SetAntiAlias(true);
+    layer_paint.SetColor(Argb(static_cast<uint8_t>(120 + layer * 18), 0xFF,
+                              static_cast<uint8_t>(90 + layer * 20),
+                              static_cast<uint8_t>(120 + layer * 14)));
+    const Rect bounds = MakeRect(width * 0.14f + layer * 12.f,
+                                 height * 0.20f + layer * 10.f,
+                                 width * 0.80f - layer * 10.f,
+                                 height * 0.78f - layer * 8.f);
+    canvas->SaveLayer(bounds, Paint{});
+    canvas->DrawCircle(width * 0.34f + layer * 22.f, height * 0.36f + layer * 18.f,
+                       34.f + layer * 6.f, layer_paint);
+    canvas->DrawRoundRect(bounds, 18.f, 18.f, layer_paint);
+    canvas->Restore();
+  }
+}
+
+void DrawTextCloudScene(Canvas* canvas, int width, int height) {
+  Paint bg;
+  bg.SetAntiAlias(true);
+  bg.SetColor(Argb(0xFF, 0x0E, 0x17, 0x29));
+  canvas->DrawRoundRect(
+      MakeRect(width * 0.08f, height * 0.12f, width * 0.92f, height * 0.88f),
+      22.f, 22.f, bg);
+
+  for (int row = 0; row < 5; ++row) {
+    for (int col = 0; col < 4; ++col) {
+      Paint text;
+      text.SetAntiAlias(true);
+      text.SetTextSize(14.f + row * 4.f + (col % 2) * 2.f);
+      text.SetColor(Argb(0xFF, static_cast<uint8_t>(120 + row * 20),
+                         static_cast<uint8_t>(180 - col * 18),
+                         static_cast<uint8_t>(220 - row * 14)));
+      canvas->Save();
+      canvas->Translate(width * 0.16f + col * width * 0.18f,
+                        height * 0.26f + row * height * 0.12f);
+      canvas->Rotate(static_cast<float>((col - row) * 6));
+      canvas->DrawSimpleText2("Skity", 0.f, 0.f, text);
+      canvas->Restore();
+    }
+  }
+}
+
+void DrawStressPathsScene(Canvas* canvas, int width, int height) {
+  Paint bg;
+  bg.SetAntiAlias(true);
+  bg.SetColor(Argb(0xFF, 0x0A, 0x12, 0x24));
+  canvas->DrawRect(MakeRect(0.f, 0.f, static_cast<float>(width),
+                            static_cast<float>(height)),
+                   bg);
+
+  for (int stripe = 0; stripe < 14; ++stripe) {
+    Path path;
+    const float top = height * 0.10f + stripe * (height * 0.05f);
+    path.MoveTo(width * 0.08f, top + 12.f);
+    for (int segment = 0; segment < 6; ++segment) {
+      const float x0 = width * 0.08f + segment * width * 0.14f;
+      const float x1 = x0 + width * 0.07f;
+      const float x2 = x0 + width * 0.14f;
+      const float y1 = top + ((segment + stripe) % 2 == 0 ? -18.f : 24.f);
+      path.CubicTo(x0 + 18.f, y1, x1, top + 22.f, x2, top + 10.f);
+    }
+
+    Paint fill;
+    fill.SetAntiAlias(true);
+    fill.SetColor(Argb(static_cast<uint8_t>(70 + stripe * 8),
+                       static_cast<uint8_t>(60 + stripe * 12),
+                       static_cast<uint8_t>(110 + stripe * 8),
+                       static_cast<uint8_t>(220 - stripe * 6)));
+    canvas->DrawPath(path, fill);
+
+    Paint stroke;
+    stroke.SetAntiAlias(true);
+    stroke.SetStyle(Paint::kStroke_Style);
+    stroke.SetStrokeWidth(2.5f + (stripe % 3));
+    stroke.SetColor(Argb(0xFF, static_cast<uint8_t>(120 + stripe * 8),
+                         static_cast<uint8_t>(220 - stripe * 10),
+                         static_cast<uint8_t>(140 + stripe * 4)));
+    canvas->DrawPath(path, stroke);
+  }
+}
+
+void DrawDashboardScene(Canvas* canvas, int width, int height) {
+  Paint bg;
+  bg.SetAntiAlias(true);
+  bg.SetColor(Argb(0xFF, 0x0D, 0x15, 0x28));
+  canvas->DrawRoundRect(
+      MakeRect(width * 0.08f, height * 0.12f, width * 0.92f, height * 0.88f),
+      24.f, 24.f, bg);
+
+  for (int card = 0; card < 3; ++card) {
+    const float left = width * 0.14f + card * width * 0.24f;
+    Paint card_paint;
+    card_paint.SetAntiAlias(true);
+    card_paint.SetColor(Argb(0xFF, static_cast<uint8_t>(22 + card * 12),
+                             static_cast<uint8_t>(34 + card * 18),
+                             static_cast<uint8_t>(58 + card * 24)));
+    canvas->DrawRoundRect(
+        MakeRect(left, height * 0.20f, left + width * 0.18f, height * 0.42f),
+        18.f, 18.f, card_paint);
+
+    Paint accent;
+    accent.SetAntiAlias(true);
+    accent.SetColor(Argb(0xFF, static_cast<uint8_t>(80 + card * 50), 0xE6,
+                         static_cast<uint8_t>(180 - card * 30)));
+    for (int bar = 0; bar < 4; ++bar) {
+      canvas->DrawRoundRect(
+          MakeRect(left + 14.f + bar * 18.f, height * 0.36f - bar * 10.f,
+                   left + 24.f + bar * 18.f, height * 0.38f + bar * 8.f),
+          6.f, 6.f, accent);
+    }
+  }
+
+  Paint panel;
+  panel.SetAntiAlias(true);
+  panel.SetColor(Argb(0xFF, 0x14, 0x22, 0x3D));
+  canvas->DrawRoundRect(
+      MakeRect(width * 0.14f, height * 0.50f, width * 0.86f, height * 0.80f),
+      20.f, 20.f, panel);
+  for (int segment = 0; segment < 6; ++segment) {
+    Paint line;
+    line.SetAntiAlias(true);
+    line.SetStyle(Paint::kStroke_Style);
+    line.SetStrokeWidth(4.f);
+    line.SetStrokeColor(Argb(0xFF, static_cast<uint8_t>(120 + segment * 18),
+                             static_cast<uint8_t>(140 + segment * 10), 0xF2));
+    canvas->DrawLine(width * 0.18f + segment * 24.f,
+                     height * 0.72f - (segment % 2 == 0 ? 26.f : 8.f),
+                     width * 0.28f + segment * 24.f,
+                     height * 0.60f + (segment % 2 == 0 ? 8.f : 20.f), line);
+  }
+}
+
+void DrawIconListScene(Canvas* canvas, int width, int height) {
+  Paint bg;
+  bg.SetAntiAlias(true);
+  bg.SetColor(Argb(0xFF, 0x10, 0x18, 0x2E));
+  canvas->DrawRoundRect(
+      MakeRect(width * 0.10f, height * 0.12f, width * 0.90f, height * 0.88f),
+      22.f, 22.f, bg);
+
+  for (int row = 0; row < 5; ++row) {
+    const float top = height * 0.18f + row * height * 0.13f;
+    Paint row_paint;
+    row_paint.SetAntiAlias(true);
+    row_paint.SetColor(Argb(0xFF, static_cast<uint8_t>(24 + row * 10),
+                            static_cast<uint8_t>(38 + row * 12),
+                            static_cast<uint8_t>(58 + row * 14)));
+    canvas->DrawRoundRect(
+        MakeRect(width * 0.14f, top, width * 0.86f, top + height * 0.10f), 16.f,
+        16.f, row_paint);
+
+    Paint icon;
+    icon.SetAntiAlias(true);
+    icon.SetColor(Argb(0xFF, static_cast<uint8_t>(90 + row * 18),
+                       static_cast<uint8_t>(200 - row * 16), 0xF4));
+    canvas->DrawCircle(width * 0.20f, top + height * 0.05f, 14.f, icon);
+
+    Paint line;
+    line.SetAntiAlias(true);
+    line.SetColor(Argb(0xCC, 0xF8, 0xFA, 0xFC));
+    canvas->DrawRoundRect(
+        MakeRect(width * 0.26f, top + 16.f, width * 0.54f, top + 24.f), 4.f, 4.f,
+        line);
+    line.SetColor(Argb(0x88, 0xC7, 0xD2, 0xFE));
+    canvas->DrawRoundRect(
+        MakeRect(width * 0.26f, top + 32.f, width * 0.72f, top + 38.f), 3.f, 3.f,
+        line);
+  }
+}
+
+void DrawCompositeStackScene(Canvas* canvas, int width, int height) {
+  DrawClipsScene(canvas, width, height);
+
+  canvas->Save();
+  canvas->Translate(width * 0.10f, height * 0.10f);
+  canvas->Rotate(9.f);
+  Paint stroke;
+  stroke.SetAntiAlias(true);
+  stroke.SetStyle(Paint::kStroke_Style);
+  stroke.SetStrokeWidth(5.f);
+  stroke.SetStrokeJoin(Paint::kRound_Join);
+  stroke.SetStrokeCap(Paint::kRound_Cap);
+  stroke.SetStrokeColor(Argb(0xFF, 0xFF, 0xC8, 0x57));
+  Path outline;
+  outline.MoveTo(width * 0.18f, height * 0.24f);
+  outline.LineTo(width * 0.38f, height * 0.18f);
+  outline.LineTo(width * 0.50f, height * 0.34f);
+  outline.LineTo(width * 0.28f, height * 0.46f);
+  canvas->DrawPath(outline, stroke);
+  canvas->Restore();
+
+  canvas->SaveLayer(MakeRect(width * 0.46f, height * 0.48f, width * 0.88f,
+                             height * 0.84f),
+                    Paint{});
+  Paint fill;
+  fill.SetAntiAlias(true);
+  fill.SetColor(Argb(0x88, 0xFB, 0x71, 0x85));
+  canvas->DrawCircle(width * 0.62f, height * 0.66f, 52.f, fill);
+  fill.SetColor(Argb(0x88, 0x38, 0xBD, 0xF8));
+  canvas->DrawCircle(width * 0.74f, height * 0.68f, 52.f, fill);
+  canvas->Restore();
+}
+
 }  // namespace
 
 void DrawDemoScene(Canvas* canvas, DemoScene scene, DemoBackend backend,
@@ -236,6 +615,39 @@ void DrawDemoScene(Canvas* canvas, DemoScene scene, DemoBackend backend,
       break;
     case DemoScene::kImage:
       DrawImageScene(canvas, width, height);
+      break;
+    case DemoScene::kArcs:
+      DrawArcsScene(canvas, width, height);
+      break;
+    case DemoScene::kTransforms:
+      DrawTransformsScene(canvas, width, height);
+      break;
+    case DemoScene::kStrokes:
+      DrawStrokesScene(canvas, width, height);
+      break;
+    case DemoScene::kTiling:
+      DrawTilingScene(canvas, width, height);
+      break;
+    case DemoScene::kClips:
+      DrawClipsScene(canvas, width, height);
+      break;
+    case DemoScene::kLayers:
+      DrawLayersScene(canvas, width, height);
+      break;
+    case DemoScene::kTextCloud:
+      DrawTextCloudScene(canvas, width, height);
+      break;
+    case DemoScene::kStressPaths:
+      DrawStressPathsScene(canvas, width, height);
+      break;
+    case DemoScene::kDashboard:
+      DrawDashboardScene(canvas, width, height);
+      break;
+    case DemoScene::kIconList:
+      DrawIconListScene(canvas, width, height);
+      break;
+    case DemoScene::kCompositeStack:
+      DrawCompositeStackScene(canvas, width, height);
       break;
   }
 }

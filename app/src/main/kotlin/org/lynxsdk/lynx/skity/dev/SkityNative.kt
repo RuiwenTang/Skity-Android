@@ -43,6 +43,10 @@ object SkityNative {
         nativeSetScene(handle, scene)
     }
 
+    fun setMsaaSampleCount(handle: Long, sampleCount: Int) {
+        nativeSetMsaaSampleCount(handle, sampleCount)
+    }
+
     fun onSurfaceCreated(handle: Long) {
         nativeOnSurfaceCreated(handle)
     }
@@ -83,6 +87,9 @@ object SkityNative {
 
     @JvmStatic
     private external fun nativeSetScene(handle: Long, scene: Int)
+
+    @JvmStatic
+    private external fun nativeSetMsaaSampleCount(handle: Long, sampleCount: Int)
 
     @JvmStatic
     private external fun nativeOnSurfaceCreated(handle: Long)

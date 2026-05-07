@@ -21,6 +21,7 @@ GlesRenderBackend::GlesRenderBackend() {
   diagnostics_.SetBackendName("OpenGL ES");
   diagnostics_.SetSurfaceName("Framebuffer");
   diagnostics_.SetValidationEnabled(false);
+  diagnostics_.SetMsaaSampleCount(1);
 }
 
 GlesRenderBackend::~GlesRenderBackend() = default;
@@ -62,6 +63,12 @@ void GlesRenderBackend::SetScene(int scene) {
   scene_.store(scene);
 }
 
+void GlesRenderBackend::SetMsaaSampleCount(int sample_count) {
+  const int normalized = sample_count <= 1 ? 1 : sample_count;
+  sample_count_.store(normalized);
+  diagnostics_.SetMsaaSampleCount(normalized);
+}
+
 void GlesRenderBackend::DrawFrame() {
   if (width_ <= 0 || height_ <= 0) {
     return;
@@ -77,7 +84,7 @@ void GlesRenderBackend::DrawFrame() {
   surface_desc.width = static_cast<uint32_t>(width_);
   surface_desc.height = static_cast<uint32_t>(height_);
   surface_desc.content_scale = 1.0f;
-  surface_desc.sample_count = 1;
+  surface_desc.sample_count = static_cast<uint32_t>(sample_count_.load());
   surface_desc.surface_type = skity::GLSurfaceType::kFramebuffer;
   surface_desc.gl_id = 0;
   surface_desc.has_stencil_attachment = false;

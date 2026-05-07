@@ -36,6 +36,7 @@ VulkanRenderBackend::VulkanRenderBackend(bool enable_validation)
   diagnostics_.SetBackendName("Vulkan");
   diagnostics_.SetSurfaceName("Swapchain");
   diagnostics_.SetValidationEnabled(validation_enabled_);
+  diagnostics_.SetMsaaSampleCount(1);
 }
 
 VulkanRenderBackend::~VulkanRenderBackend() {
@@ -79,6 +80,12 @@ void VulkanRenderBackend::SetScene(int scene) {
   scene_.store(scene);
 }
 
+void VulkanRenderBackend::SetMsaaSampleCount(int sample_count) {
+  const int normalized = sample_count <= 1 ? 1 : sample_count;
+  sample_count_.store(normalized);
+  diagnostics_.SetMsaaSampleCount(normalized);
+}
+
 void VulkanRenderBackend::DrawFrame() {
   if (!EnsureNativeWindow()) {
     return;
@@ -90,7 +97,7 @@ void VulkanRenderBackend::DrawFrame() {
   }
 
   skity::GPUSurfaceAcquireDescriptor acquire_desc = {};
-  acquire_desc.sample_count = 1;
+  acquire_desc.sample_count = static_cast<uint32_t>(sample_count_.load());
   acquire_desc.content_scale = 1.f;
 
   auto acquire_result = presenter->AcquireNextSurface(acquire_desc);

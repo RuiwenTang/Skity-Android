@@ -24,6 +24,7 @@ class GlesRenderBackend final : public RenderBackend {
   void OnSurfaceDestroyed() override;
   void OnSurfaceChanged(int width, int height) override;
   void SetScene(int scene) override;
+  void SetMsaaSampleCount(int sample_count) override;
   void DrawFrame() override;
   std::string GetOverlayText() const override;
 
@@ -33,6 +34,7 @@ class GlesRenderBackend final : public RenderBackend {
   std::unique_ptr<skity::GPUContext> context_;
   RendererDiagnostics diagnostics_;
   std::atomic<int> scene_{1};
+  std::atomic<int> sample_count_{1};
   int width_ = 0;
   int height_ = 0;
 };

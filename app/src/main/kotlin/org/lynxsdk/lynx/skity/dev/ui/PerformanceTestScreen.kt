@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import org.lynxsdk.lynx.skity.dev.BackendType
 import org.lynxsdk.lynx.skity.dev.DemoScene
+import org.lynxsdk.lynx.skity.dev.RenderQualitySettings
 import org.lynxsdk.lynx.skity.dev.SharedRendererRegistry
 import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
 import kotlinx.coroutines.delay
@@ -35,6 +36,33 @@ private data class BenchmarkSample(
     val frameTimeMs: Double,
     val pssMb: Double?
 )
+
+private enum class BenchmarkWorkload(
+    val title: String,
+    val description: String,
+    val scene: DemoScene
+) {
+    VECTOR_STRESS(
+        "Vector Stress",
+        "Repeated filled and stroked paths with dense striping and transform-heavy curves.",
+        DemoScene.STRESS_PATHS
+    ),
+    TEXT_STRESS(
+        "Text Stress",
+        "Dense repeated glyph placement with varied size and baseline positions.",
+        DemoScene.TEXT_CLOUD
+    ),
+    LAYER_STRESS(
+        "Layer Blend",
+        "Translucent overlapping geometry with compositing-heavy overlap.",
+        DemoScene.LAYERS
+    ),
+    CLIP_STRESS(
+        "Clip Stack",
+        "Nested clip regions with constrained overdraw in multiple subregions.",
+        DemoScene.CLIPS
+    )
+}
 
 private enum class BenchmarkDuration(val seconds: Int, val title: String) {
     SHORT(5, "5s"),
@@ -47,7 +75,7 @@ fun PerformanceTestScreen() {
     val context = LocalContext.current
     val isDebuggable =
         (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-    var scene by remember { mutableStateOf(DemoScene.SHAPES) }
+    var workload by remember { mutableStateOf(BenchmarkWorkload.VECTOR_STRESS) }
     var backend by remember { mutableStateOf(BackendType.GLES) }
     var duration by remember { mutableStateOf(BenchmarkDuration.MEDIUM) }
     var running by remember { mutableStateOf(false) }
@@ -55,6 +83,7 @@ fun PerformanceTestScreen() {
     var statsProvider by remember { mutableStateOf<(() -> String)?>(null) }
     val samples = remember { mutableStateListOf<BenchmarkSample>() }
     val validationRequested = VulkanDebugSettings.validationRequested
+    val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
 
     LaunchedEffect(running, duration, statsProvider) {
         if (!running) {
@@ -74,8 +103,9 @@ fun PerformanceTestScreen() {
         running = false
     }
 
-    val summary = remember(samples.toList(), backend, duration, validationRequested) {
+    val summary = remember(samples.toList(), workload, backend, duration, validationRequested) {
         buildBenchmarkSummary(
+            workload = workload,
             backend = backend,
             duration = duration,
             validationRequested = validationRequested,
@@ -90,19 +120,21 @@ fun PerformanceTestScreen() {
             .padding(20.dp)
     ) {
         Headline("Performance Test")
-        Body("Run a lightweight benchmark with a fixed scene and backend, then compare the aggregated frame metrics.")
+        Body("Run a heavier rendering workload with a fixed backend and duration, then compare the aggregated frame metrics.")
         Spacer(Modifier.height(20.dp))
         SurfaceCard(modifier = Modifier.fillMaxWidth()) {
             Column {
                 CardTitle("Benchmark Settings")
                 Spacer(Modifier.height(10.dp))
-                CardTitle("Scene")
+                CardTitle("Workload")
                 EnumDropdown(
-                    selected = scene,
-                    values = DemoScene.entries.toTypedArray(),
+                    selected = workload,
+                    values = BenchmarkWorkload.entries.toTypedArray(),
                     itemLabel = { it.title },
-                    onSelected = { scene = it }
+                    onSelected = { workload = it }
                 )
+                Spacer(Modifier.height(14.dp))
+                Body(workload.description)
                 Spacer(Modifier.height(14.dp))
                 CardTitle("Backend")
                 EnumDropdown(
@@ -118,6 +150,16 @@ fun PerformanceTestScreen() {
                     values = BenchmarkDuration.entries.toTypedArray(),
                     itemLabel = { it.title },
                     onSelected = { duration = it }
+                )
+                Spacer(Modifier.height(14.dp))
+                MsaaCard(
+                    enabled = msaaEnabled,
+                    onEnabledChange = { enabled ->
+                        RenderQualitySettings.setMsaaEnabled(enabled)
+                        SharedRendererRegistry.vulkanSession.setMsaaSampleCount(
+                            RenderQualitySettings.msaaSampleCount
+                        )
+                    }
                 )
                 if (backend == BackendType.VULKAN) {
                     Spacer(Modifier.height(14.dp))
@@ -138,9 +180,9 @@ fun PerformanceTestScreen() {
                 Spacer(Modifier.height(10.dp))
                 Body(
                     if (running) {
-                        "Sampling ${backend.title} for ${duration.seconds}s. Elapsed: ${elapsedSeconds}s."
+                        "Sampling ${workload.title} on ${backend.title} for ${duration.seconds}s. Elapsed: ${elapsedSeconds}s."
                     } else {
-                        "Ready to run a ${duration.seconds}s sample on ${backend.title}."
+                        "Ready to run ${workload.title} on ${backend.title} for ${duration.seconds}s."
                     }
                 )
                 Spacer(Modifier.height(12.dp))
@@ -167,7 +209,7 @@ fun PerformanceTestScreen() {
         }
         Spacer(Modifier.height(16.dp))
         ScenePreviewPanel(
-            scene = scene,
+            scene = workload.scene,
             backend = backend,
             previewHeight = 260.dp,
             onStatsProviderChanged = { provider ->
@@ -203,6 +245,7 @@ private fun parseBenchmarkSample(text: String): BenchmarkSample? {
 }
 
 private fun buildBenchmarkSummary(
+    workload: BenchmarkWorkload,
     backend: BackendType,
     duration: BenchmarkDuration,
     validationRequested: Boolean,
@@ -210,6 +253,7 @@ private fun buildBenchmarkSummary(
 ): String {
     if (samples.isEmpty()) {
         return buildString {
+            appendLine("Workload: ${workload.title}")
             appendLine("Backend: ${backend.title}")
             appendLine("Duration: ${duration.seconds}s")
             append("Run the benchmark to collect aggregate results.")
@@ -225,6 +269,7 @@ private fun buildBenchmarkSummary(
     val avgPss = samples.mapNotNull { it.pssMb }.takeIf { it.isNotEmpty() }?.average()
 
     return buildString {
+        appendLine("Workload: ${workload.title}")
         appendLine("Backend: ${backend.title}")
         appendLine("Duration: ${duration.seconds}s")
         if (backend == BackendType.VULKAN) {

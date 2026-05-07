@@ -11,6 +11,7 @@ class RendererDiagnostics {
   void SetBackendName(const char* backend_name);
   void SetSurfaceName(const char* surface_name);
   void SetValidationEnabled(bool enabled);
+  void SetMsaaSampleCount(int sample_count);
   void SetContextReady(bool ready);
   void SetSurfaceSize(int width, int height);
   void SetGpuInfo(const char* vendor_name,
@@ -30,6 +31,7 @@ class RendererDiagnostics {
   std::string gpu_renderer_ = "Unknown";
   std::string gpu_version_ = "Unknown";
   bool validation_enabled_ = false;
+  int msaa_sample_count_ = 1;
   bool context_ready_ = false;
   int width_ = 0;
   int height_ = 0;

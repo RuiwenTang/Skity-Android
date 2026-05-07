@@ -64,6 +64,10 @@ void AppRenderer::SetScene(int scene) {
   backend_->SetScene(scene);
 }
 
+void AppRenderer::SetMsaaSampleCount(int sample_count) {
+  backend_->SetMsaaSampleCount(sample_count);
+}
+
 void AppRenderer::DrawFrame() {
   backend_->DrawFrame();
 }

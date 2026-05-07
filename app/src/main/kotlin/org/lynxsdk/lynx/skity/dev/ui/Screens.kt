@@ -41,11 +41,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import org.lynxsdk.lynx.skity.dev.BackendType
 import org.lynxsdk.lynx.skity.dev.DemoScene
+import org.lynxsdk.lynx.skity.dev.RenderQualitySettings
+import org.lynxsdk.lynx.skity.dev.SharedRendererRegistry
 import org.lynxsdk.lynx.skity.dev.SkityRenderSurfaceView
 import org.lynxsdk.lynx.skity.dev.SkityNative
 import org.lynxsdk.lynx.skity.dev.SkityVulkanSurfaceView
 import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
-import org.lynxsdk.lynx.skity.dev.SharedRendererRegistry
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun LauncherScreen(
@@ -93,6 +95,7 @@ fun SceneGalleryScreen() {
     var scene by remember { mutableStateOf(DemoScene.SHAPES) }
     var backend by remember { mutableStateOf(BackendType.AUTO) }
     val validationRequested = VulkanDebugSettings.validationRequested
+    val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
 
     Column(
         modifier = Modifier
@@ -121,6 +124,16 @@ fun SceneGalleryScreen() {
             }
         }
         Spacer(Modifier.height(16.dp))
+        MsaaCard(
+            enabled = msaaEnabled,
+            onEnabledChange = { enabled ->
+                RenderQualitySettings.setMsaaEnabled(enabled)
+                SharedRendererRegistry.vulkanSession.setMsaaSampleCount(
+                    RenderQualitySettings.msaaSampleCount
+                )
+            }
+        )
+        Spacer(Modifier.height(16.dp))
         VulkanValidationCard(
             enabled = validationRequested,
             onEnabledChange = { enabled ->
@@ -141,6 +154,7 @@ fun SceneGalleryScreen() {
 fun BackendCompareScreen() {
     var scene by remember { mutableStateOf(DemoScene.SHAPES) }
     val validationRequested = VulkanDebugSettings.validationRequested
+    val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
 
     Column(
         modifier = Modifier
@@ -156,6 +170,16 @@ fun BackendCompareScreen() {
         }
         Spacer(Modifier.height(12.dp))
         Body("Use this screen to compare the same scene across backends. Current scene: ${scene.title}.")
+        Spacer(Modifier.height(16.dp))
+        MsaaCard(
+            enabled = msaaEnabled,
+            onEnabledChange = { enabled ->
+                RenderQualitySettings.setMsaaEnabled(enabled)
+                SharedRendererRegistry.vulkanSession.setMsaaSampleCount(
+                    RenderQualitySettings.msaaSampleCount
+                )
+            }
+        )
         Spacer(Modifier.height(16.dp))
         VulkanValidationCard(
             enabled = validationRequested,
@@ -239,6 +263,31 @@ internal fun InfoCard(title: String, body: String) {
             CardTitle(title)
             Spacer(Modifier.height(10.dp))
             Body(body)
+        }
+    }
+}
+
+@Composable
+internal fun MsaaCard(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit
+) {
+    SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+        Column {
+            CardTitle("MSAA")
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.fillMaxWidth(0.8f)) {
+                    Body("Enable runtime multisample antialiasing for both backends. Current mode: ${if (enabled) "4x" else "Off"}")
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onEnabledChange
+                )
+            }
         }
     }
 }
@@ -348,6 +397,7 @@ private fun GlesPreviewPanel(
     val view = remember {
         SkityRenderSurfaceView(context)
     }
+    val msaaSampleCount = RenderQualitySettings.msaaSampleCount
 
     DisposableEffect(view, lifecycleOwner) {
         onStatsProviderChanged?.invoke { view.getOverlayDetails() }
@@ -366,6 +416,10 @@ private fun GlesPreviewPanel(
             view.onPause()
             view.release()
         }
+    }
+
+    LaunchedEffect(view, msaaSampleCount) {
+        view.setMsaaSampleCount(msaaSampleCount)
     }
 
     Column {
@@ -403,6 +457,7 @@ private fun VulkanPreviewPanel(
     val view = remember {
         SkityVulkanSurfaceView(context)
     }
+    val msaaSampleCount = RenderQualitySettings.msaaSampleCount
 
     DisposableEffect(view, lifecycleOwner) {
         onStatsProviderChanged?.invoke { view.getOverlayDetails() }
@@ -421,6 +476,10 @@ private fun VulkanPreviewPanel(
             view.onPauseRendering()
             view.release()
         }
+    }
+
+    LaunchedEffect(msaaSampleCount) {
+        SharedRendererRegistry.vulkanSession.setMsaaSampleCount(msaaSampleCount)
     }
 
     Column {

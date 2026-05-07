@@ -21,6 +21,10 @@ class SkityRenderSurfaceView @JvmOverloads constructor(
         rendererDelegate.setScene(scene)
     }
 
+    fun setMsaaSampleCount(sampleCount: Int) {
+        rendererDelegate.setMsaaSampleCount(sampleCount)
+    }
+
     fun getOverlayDetails(): String = rendererDelegate.getOverlayDetails()
 
     fun release() {
@@ -35,6 +39,8 @@ class SkityRenderSurfaceView @JvmOverloads constructor(
         private var pendingReleaseHandle: Long = 0L
         @Volatile
         private var scene: DemoScene = DemoScene.SHAPES
+        @Volatile
+        private var sampleCount: Int = 1
 
         fun setScene(scene: DemoScene) {
             this.scene = scene
@@ -44,6 +50,13 @@ class SkityRenderSurfaceView @JvmOverloads constructor(
         }
 
         fun getOverlayDetails(): String = SkityNative.getRendererOverlay(rendererHandle)
+
+        fun setMsaaSampleCount(sampleCount: Int) {
+            this.sampleCount = sampleCount
+            if (rendererHandle != 0L) {
+                SkityNative.setMsaaSampleCount(rendererHandle, sampleCount)
+            }
+        }
 
         fun prepareForRelease() {
             pendingReleaseHandle = rendererHandle
@@ -67,6 +80,7 @@ class SkityRenderSurfaceView @JvmOverloads constructor(
                 rendererHandle = SkityNative.createRenderer(BackendType.GLES)
             }
             SkityNative.setScene(rendererHandle, scene.ordinal)
+            SkityNative.setMsaaSampleCount(rendererHandle, sampleCount)
             SkityNative.onSurfaceCreated(rendererHandle)
         }
 

@@ -18,6 +18,7 @@ class AppRenderer {
   void OnSurfaceDestroyed();
   void OnSurfaceChanged(int width, int height);
   void SetScene(int scene);
+  void SetMsaaSampleCount(int sample_count);
   void DrawFrame();
   std::string GetOverlayText() const;
 

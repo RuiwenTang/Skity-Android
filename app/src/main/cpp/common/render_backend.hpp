@@ -15,6 +15,7 @@ class RenderBackend {
   virtual void OnSurfaceDestroyed() = 0;
   virtual void OnSurfaceChanged(int width, int height) = 0;
   virtual void SetScene(int scene) = 0;
+  virtual void SetMsaaSampleCount(int sample_count) = 0;
   virtual void DrawFrame() = 0;
   virtual std::string GetOverlayText() const = 0;
 };

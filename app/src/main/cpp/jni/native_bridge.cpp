@@ -59,6 +59,17 @@ Java_org_lynxsdk_lynx_skity_dev_SkityNative_nativeSetScene(
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_org_lynxsdk_lynx_skity_dev_SkityNative_nativeSetMsaaSampleCount(
+    JNIEnv* env, jclass clazz, jlong handle, jint sample_count) {
+  (void)env;
+  (void)clazz;
+  auto* renderer = FromHandle(handle);
+  if (renderer != nullptr) {
+    renderer->SetMsaaSampleCount(sample_count);
+  }
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_org_lynxsdk_lynx_skity_dev_SkityNative_nativeSetSurface(
     JNIEnv* env, jclass clazz, jlong handle, jobject surface) {
   (void)clazz;
