@@ -26,7 +26,10 @@ object SkityNative {
         return nativeGetStatusSummary()
     }
 
-    fun createRenderer(backend: BackendType): Long = nativeCreateRenderer(backend.ordinal)
+    fun createRenderer(
+        backend: BackendType,
+        enableVulkanValidation: Boolean = false
+    ): Long = nativeCreateRenderer(backend.ordinal, enableVulkanValidation)
 
     fun destroyRenderer(handle: Long) {
         nativeDestroyRenderer(handle)
@@ -56,11 +59,21 @@ object SkityNative {
         nativeDrawFrame(handle)
     }
 
+    fun getRendererOverlay(handle: Long): String {
+        if (handle == 0L) {
+            return ""
+        }
+        return nativeGetRendererOverlay(handle)
+    }
+
     @JvmStatic
     private external fun nativeGetStatusSummary(): String
 
     @JvmStatic
-    private external fun nativeCreateRenderer(backendType: Int): Long
+    private external fun nativeCreateRenderer(
+        backendType: Int,
+        enableVulkanValidation: Boolean
+    ): Long
 
     @JvmStatic
     private external fun nativeDestroyRenderer(handle: Long)
@@ -82,4 +95,7 @@ object SkityNative {
 
     @JvmStatic
     private external fun nativeDrawFrame(handle: Long)
+
+    @JvmStatic
+    private external fun nativeGetRendererOverlay(handle: Long): String
 }

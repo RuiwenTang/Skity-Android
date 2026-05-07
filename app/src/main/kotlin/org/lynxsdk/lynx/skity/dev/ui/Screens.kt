@@ -1,9 +1,9 @@
 package org.lynxsdk.lynx.skity.dev.ui
 
 import android.os.Build
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -21,6 +22,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,11 +44,14 @@ import org.lynxsdk.lynx.skity.dev.DemoScene
 import org.lynxsdk.lynx.skity.dev.SkityRenderSurfaceView
 import org.lynxsdk.lynx.skity.dev.SkityNative
 import org.lynxsdk.lynx.skity.dev.SkityVulkanSurfaceView
+import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
+import org.lynxsdk.lynx.skity.dev.SharedRendererRegistry
 
 @Composable
 fun LauncherScreen(
     onOpenSceneGallery: () -> Unit,
     onOpenBackendCompare: () -> Unit,
+    onOpenPerformanceTest: () -> Unit,
     onOpenCapabilityInfo: () -> Unit
 ) {
     Column(
@@ -73,6 +78,10 @@ fun LauncherScreen(
             Text("Backend Compare")
         }
         Spacer(Modifier.height(12.dp))
+        Button(modifier = Modifier.fillMaxWidth(), onClick = onOpenPerformanceTest) {
+            Text("Performance Test")
+        }
+        Spacer(Modifier.height(12.dp))
         OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = onOpenCapabilityInfo) {
             Text("Capability Info")
         }
@@ -83,6 +92,7 @@ fun LauncherScreen(
 fun SceneGalleryScreen() {
     var scene by remember { mutableStateOf(DemoScene.SHAPES) }
     var backend by remember { mutableStateOf(BackendType.AUTO) }
+    val validationRequested = VulkanDebugSettings.validationRequested
 
     Column(
         modifier = Modifier
@@ -111,21 +121,26 @@ fun SceneGalleryScreen() {
             }
         }
         Spacer(Modifier.height(16.dp))
-        SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-            ScenePreviewHost(
-                scene = scene,
-                backend = backend,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-            )
-        }
+        VulkanValidationCard(
+            enabled = validationRequested,
+            onEnabledChange = { enabled ->
+                VulkanDebugSettings.updateValidationRequested(enabled)
+                SharedRendererRegistry.vulkanSession.setValidationRequested(enabled)
+            }
+        )
+        Spacer(Modifier.height(16.dp))
+        ScenePreviewPanel(
+            scene = scene,
+            backend = backend,
+            previewHeight = 260.dp
+        )
     }
 }
 
 @Composable
 fun BackendCompareScreen() {
     var scene by remember { mutableStateOf(DemoScene.SHAPES) }
+    val validationRequested = VulkanDebugSettings.validationRequested
 
     Column(
         modifier = Modifier
@@ -141,30 +156,30 @@ fun BackendCompareScreen() {
         }
         Spacer(Modifier.height(12.dp))
         Body("Use this screen to compare the same scene across backends. Current scene: ${scene.title}.")
+        Spacer(Modifier.height(16.dp))
+        VulkanValidationCard(
+            enabled = validationRequested,
+            onEnabledChange = { enabled ->
+                VulkanDebugSettings.updateValidationRequested(enabled)
+                SharedRendererRegistry.vulkanSession.setValidationRequested(enabled)
+            }
+        )
         Spacer(Modifier.height(18.dp))
         CardTitle("GLES Preview")
         Spacer(Modifier.height(8.dp))
-        SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-            ScenePreviewHost(
-                scene = scene,
-                backend = BackendType.GLES,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-            )
-        }
+        ScenePreviewPanel(
+            scene = scene,
+            backend = BackendType.GLES,
+            previewHeight = 220.dp
+        )
         Spacer(Modifier.height(18.dp))
         CardTitle("Vulkan Preview")
         Spacer(Modifier.height(8.dp))
-        SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-            ScenePreviewHost(
-                scene = scene,
-                backend = BackendType.VULKAN,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-            )
-        }
+        ScenePreviewPanel(
+            scene = scene,
+            backend = BackendType.VULKAN,
+            previewHeight = 220.dp
+        )
     }
 }
 
@@ -172,6 +187,8 @@ fun BackendCompareScreen() {
 fun CapabilityInfoScreen() {
     val context = LocalContext.current
     val packageManager = context.packageManager
+    val isDebuggable =
+        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     val hasVulkan = packageManager.hasSystemFeature(PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL)
     val hasExtensionPack = packageManager.hasSystemFeature(PackageManager.FEATURE_OPENGLES_EXTENSION_PACK)
     val deviceInfo = buildString {
@@ -202,12 +219,21 @@ fun CapabilityInfoScreen() {
         Spacer(Modifier.height(14.dp))
         InfoCard("Backend Validation Notes", backendInfo)
         Spacer(Modifier.height(14.dp))
+        InfoCard(
+            "Validation Runtime Toggle",
+            if (isDebuggable) {
+                "Debug build: Vulkan validation can be requested at runtime from Scene Gallery and Backend Compare."
+            } else {
+                "Release build: the Vulkan validation toggle is ignored and no validation layers are requested."
+            }
+        )
+        Spacer(Modifier.height(14.dp))
         InfoCard("Native Status", SkityNative.getStatusSummary())
     }
 }
 
 @Composable
-private fun InfoCard(title: String, body: String) {
+internal fun InfoCard(title: String, body: String) {
     SurfaceCard(modifier = Modifier.fillMaxWidth()) {
         Column {
             CardTitle(title)
@@ -218,7 +244,39 @@ private fun InfoCard(title: String, body: String) {
 }
 
 @Composable
-private fun Headline(text: String) {
+internal fun VulkanValidationCard(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit
+) {
+    val context = LocalContext.current
+    val isDebuggable =
+        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+        Column {
+            CardTitle("Vulkan Validation")
+            Spacer(Modifier.height(10.dp))
+            if (isDebuggable) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth(0.8f)) {
+                        Body("Request Vulkan validation layers at runtime for the shared debug Vulkan renderer.")
+                    }
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = onEnabledChange
+                    )
+                }
+            } else {
+                Body("Release build ignores the Vulkan validation toggle and does not load validation layers.")
+            }
+        }
+    }
+}
+
+@Composable
+internal fun Headline(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.headlineMedium.copy(
@@ -229,7 +287,7 @@ private fun Headline(text: String) {
 }
 
 @Composable
-private fun CardTitle(text: String) {
+internal fun CardTitle(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
@@ -237,7 +295,7 @@ private fun CardTitle(text: String) {
 }
 
 @Composable
-private fun Body(text: String) {
+internal fun Body(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyMedium,
@@ -246,30 +304,43 @@ private fun Body(text: String) {
 }
 
 @Composable
-private fun ScenePreviewHost(
+internal fun ScenePreviewPanel(
     scene: DemoScene,
     backend: BackendType,
-    modifier: Modifier = Modifier
+    previewHeight: androidx.compose.ui.unit.Dp,
+    onStatsProviderChanged: (((() -> String)?) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val supportsVulkan = context.packageManager.hasSystemFeature(PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL)
     when (backend) {
-        BackendType.AUTO, BackendType.GLES -> RealGlesPreview(scene = scene, modifier = modifier)
+        BackendType.AUTO, BackendType.GLES -> GlesPreviewPanel(
+            scene = scene,
+            previewHeight = previewHeight,
+            onStatsProviderChanged = onStatsProviderChanged
+        )
         BackendType.VULKAN -> if (supportsVulkan) {
-            RealVulkanPreview(scene = scene, modifier = modifier)
-        } else {
-            PreviewFallback(
-                title = "Vulkan unavailable",
-                body = "This device does not report Vulkan window-system support, so the Vulkan preview stays in fallback mode."
+            VulkanPreviewPanel(
+                scene = scene,
+                previewHeight = previewHeight,
+                onStatsProviderChanged = onStatsProviderChanged
             )
+        } else {
+            onStatsProviderChanged?.invoke(null)
+            SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+                PreviewFallback(
+                    title = "Vulkan unavailable",
+                    body = "This device does not report Vulkan window-system support, so the Vulkan preview stays in fallback mode."
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun RealGlesPreview(
+private fun GlesPreviewPanel(
     scene: DemoScene,
-    modifier: Modifier = Modifier
+    previewHeight: androidx.compose.ui.unit.Dp,
+    onStatsProviderChanged: (((() -> String)?) -> Unit)? = null
 ) {
     val context = LocalContext.current
     @Suppress("DEPRECATION")
@@ -279,6 +350,7 @@ private fun RealGlesPreview(
     }
 
     DisposableEffect(view, lifecycleOwner) {
+        onStatsProviderChanged?.invoke { view.getOverlayDetails() }
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> view.onResume()
@@ -289,29 +361,41 @@ private fun RealGlesPreview(
         lifecycleOwner.lifecycle.addObserver(observer)
 
         onDispose {
+            onStatsProviderChanged?.invoke(null)
             lifecycleOwner.lifecycle.removeObserver(observer)
             view.onPause()
             view.release()
         }
     }
 
-    AndroidView(
-        modifier = modifier,
-        factory = {
-            view.apply {
-                setScene(scene)
-            }
-        },
-        update = {
-            it.setScene(scene)
+    Column {
+        SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(previewHeight),
+                factory = {
+                    view.apply {
+                        setScene(scene)
+                    }
+                },
+                update = {
+                    it.setScene(scene)
+                }
+            )
         }
-    )
+        Spacer(Modifier.height(10.dp))
+        GpuInfoOverlay(
+            statsProvider = { view.getOverlayDetails() }
+        )
+    }
 }
 
 @Composable
-private fun RealVulkanPreview(
+private fun VulkanPreviewPanel(
     scene: DemoScene,
-    modifier: Modifier = Modifier
+    previewHeight: androidx.compose.ui.unit.Dp,
+    onStatsProviderChanged: (((() -> String)?) -> Unit)? = null
 ) {
     val context = LocalContext.current
     @Suppress("DEPRECATION")
@@ -321,6 +405,7 @@ private fun RealVulkanPreview(
     }
 
     DisposableEffect(view, lifecycleOwner) {
+        onStatsProviderChanged?.invoke { view.getOverlayDetails() }
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> view.onResumeRendering()
@@ -331,23 +416,34 @@ private fun RealVulkanPreview(
         lifecycleOwner.lifecycle.addObserver(observer)
 
         onDispose {
+            onStatsProviderChanged?.invoke(null)
             lifecycleOwner.lifecycle.removeObserver(observer)
             view.onPauseRendering()
             view.release()
         }
     }
 
-    AndroidView(
-        modifier = modifier,
-        factory = {
-            view.apply {
-                setScene(scene)
-            }
-        },
-        update = {
-            it.setScene(scene)
+    Column {
+        SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(previewHeight),
+                factory = {
+                    view.apply {
+                        setScene(scene)
+                    }
+                },
+                update = {
+                    it.setScene(scene)
+                }
+            )
         }
-    )
+        Spacer(Modifier.height(10.dp))
+        GpuInfoOverlay(
+            statsProvider = { view.getOverlayDetails() }
+        )
+    }
 }
 
 @Composable
@@ -372,7 +468,7 @@ private fun PreviewFallback(
 @Suppress("DEPRECATION")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun <T> EnumDropdown(
+internal fun <T> EnumDropdown(
     selected: T,
     values: Array<T>,
     itemLabel: (T) -> String,

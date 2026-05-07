@@ -31,8 +31,10 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     jni/native_bridge.cpp
     common/app_renderer.cpp
     common/demo_scene_renderer.cpp
+    common/renderer_diagnostics.cpp
     gles/gl_proc_resolver.cpp
     gles/gles_render_backend.cpp
+    vulkan/vulkan_probe.cpp
     vulkan/vulkan_render_backend.cpp)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE

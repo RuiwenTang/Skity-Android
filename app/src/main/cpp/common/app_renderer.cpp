@@ -15,7 +15,20 @@ constexpr int kBackendVulkan = 2;
 std::unique_ptr<RenderBackend> CreateRenderBackend(int backend_type) {
   switch (backend_type) {
     case kBackendVulkan:
-      return CreateVulkanRenderBackend();
+      return CreateVulkanRenderBackend(false);
+    case kBackendAuto:
+    case kBackendGles:
+    default:
+      return CreateGlesRenderBackend();
+  }
+}
+
+std::unique_ptr<RenderBackend> CreateRenderBackend(
+    int backend_type,
+    bool enable_vulkan_validation) {
+  switch (backend_type) {
+    case kBackendVulkan:
+      return CreateVulkanRenderBackend(enable_vulkan_validation);
     case kBackendAuto:
     case kBackendGles:
     default:
@@ -25,8 +38,9 @@ std::unique_ptr<RenderBackend> CreateRenderBackend(int backend_type) {
 
 }  // namespace
 
-AppRenderer::AppRenderer(int backend_type)
-    : backend_(CreateRenderBackend(backend_type)) {}
+AppRenderer::AppRenderer(int backend_type, bool enable_vulkan_validation)
+    : backend_(
+          CreateRenderBackend(backend_type, enable_vulkan_validation)) {}
 
 AppRenderer::~AppRenderer() = default;
 
@@ -52,6 +66,10 @@ void AppRenderer::SetScene(int scene) {
 
 void AppRenderer::DrawFrame() {
   backend_->DrawFrame();
+}
+
+std::string AppRenderer::GetOverlayText() const {
+  return backend_->GetOverlayText();
 }
 
 }  // namespace skity::demo

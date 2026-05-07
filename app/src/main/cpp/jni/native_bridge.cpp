@@ -32,10 +32,11 @@ Java_org_lynxsdk_lynx_skity_dev_SkityNative_nativeGetStatusSummary(
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_org_lynxsdk_lynx_skity_dev_SkityNative_nativeCreateRenderer(
-    JNIEnv* env, jclass clazz, jint backend_type) {
+    JNIEnv* env, jclass clazz, jint backend_type, jboolean enable_validation) {
   (void)env;
   (void)clazz;
-  return ToHandle(std::make_unique<skity::demo::AppRenderer>(backend_type));
+  return ToHandle(std::make_unique<skity::demo::AppRenderer>(
+      backend_type, enable_validation == JNI_TRUE));
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -117,4 +118,17 @@ Java_org_lynxsdk_lynx_skity_dev_SkityNative_nativeDrawFrame(
   if (renderer != nullptr) {
     renderer->DrawFrame();
   }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_org_lynxsdk_lynx_skity_dev_SkityNative_nativeGetRendererOverlay(
+    JNIEnv* env, jclass clazz, jlong handle) {
+  (void)clazz;
+  auto* renderer = FromHandle(handle);
+  if (renderer == nullptr) {
+    return env->NewStringUTF("");
+  }
+
+  const auto overlay = renderer->GetOverlayText();
+  return env->NewStringUTF(overlay.c_str());
 }

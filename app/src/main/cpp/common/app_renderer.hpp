@@ -2,6 +2,7 @@
 
 #include <android/native_window.h>
 #include <memory>
+#include <string>
 
 namespace skity::demo {
 
@@ -9,7 +10,7 @@ class RenderBackend;
 
 class AppRenderer {
  public:
-  explicit AppRenderer(int backend_type);
+  AppRenderer(int backend_type, bool enable_vulkan_validation);
   ~AppRenderer();
 
   void SetNativeWindow(ANativeWindow* native_window);
@@ -18,6 +19,7 @@ class AppRenderer {
   void OnSurfaceChanged(int width, int height);
   void SetScene(int scene);
   void DrawFrame();
+  std::string GetOverlayText() const;
 
  private:
   std::unique_ptr<RenderBackend> backend_;

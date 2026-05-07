@@ -17,7 +17,11 @@ std::unique_ptr<RenderBackend> CreateGlesRenderBackend() {
   return std::make_unique<GlesRenderBackend>();
 }
 
-GlesRenderBackend::GlesRenderBackend() = default;
+GlesRenderBackend::GlesRenderBackend() {
+  diagnostics_.SetBackendName("OpenGL ES");
+  diagnostics_.SetSurfaceName("Framebuffer");
+  diagnostics_.SetValidationEnabled(false);
+}
 
 GlesRenderBackend::~GlesRenderBackend() = default;
 
@@ -32,10 +36,17 @@ void GlesRenderBackend::OnSurfaceCreated() {
 
   context_ = skity::GLContextCreate(
       reinterpret_cast<void*>(ResolveGLProcAddress));
+  diagnostics_.SetContextReady(context_ != nullptr);
+  diagnostics_.SetGpuInfo(
+      reinterpret_cast<const char*>(glGetString(GL_VENDOR)),
+      reinterpret_cast<const char*>(glGetString(GL_RENDERER)),
+      reinterpret_cast<const char*>(glGetString(GL_VERSION)));
 }
 
 void GlesRenderBackend::OnSurfaceDestroyed() {
   context_.reset();
+  diagnostics_.SetContextReady(false);
+  diagnostics_.SetSurfaceSize(0, 0);
   width_ = 0;
   height_ = 0;
 }
@@ -43,6 +54,7 @@ void GlesRenderBackend::OnSurfaceDestroyed() {
 void GlesRenderBackend::OnSurfaceChanged(int width, int height) {
   width_ = width;
   height_ = height;
+  diagnostics_.SetSurfaceSize(width, height);
   glViewport(0, 0, width, height);
 }
 
@@ -87,11 +99,16 @@ void GlesRenderBackend::DrawFrame() {
                 DemoBackend::kGles, false, width_, height_);
   canvas->Flush();
   surface->Flush();
+  diagnostics_.RecordFrame();
 }
 
 void GlesRenderBackend::ClearFallbackFrame() const {
   glClearColor(0.25f, 0.08f, 0.08f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
+}
+
+std::string GlesRenderBackend::GetOverlayText() const {
+  return diagnostics_.BuildOverlayText();
 }
 
 }  // namespace skity::demo

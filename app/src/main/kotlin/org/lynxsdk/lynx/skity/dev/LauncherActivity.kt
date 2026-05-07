@@ -19,6 +19,9 @@ class LauncherActivity : ComponentActivity() {
                     onOpenBackendCompare = {
                         startActivity(Intent(this, BackendCompareActivity::class.java))
                     },
+                    onOpenPerformanceTest = {
+                        startActivity(Intent(this, PerformanceTestActivity::class.java))
+                    },
                     onOpenCapabilityInfo = {
                         startActivity(Intent(this, CapabilityInfoActivity::class.java))
                     }

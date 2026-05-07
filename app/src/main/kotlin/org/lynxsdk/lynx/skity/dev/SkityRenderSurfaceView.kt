@@ -14,22 +14,25 @@ class SkityRenderSurfaceView @JvmOverloads constructor(
         setEGLContextClientVersion(3)
         preserveEGLContextOnPause = true
         setRenderer(rendererDelegate)
-        renderMode = RENDERMODE_WHEN_DIRTY
+        renderMode = RENDERMODE_CONTINUOUSLY
     }
 
     fun setScene(scene: DemoScene) {
         rendererDelegate.setScene(scene)
-        requestRender()
     }
 
+    fun getOverlayDetails(): String = rendererDelegate.getOverlayDetails()
+
     fun release() {
+        rendererDelegate.prepareForRelease()
         queueEvent {
-            rendererDelegate.release()
+            rendererDelegate.releaseOnGlThread()
         }
     }
 
     private class NativeRendererDelegate : Renderer {
         private var rendererHandle: Long = 0L
+        private var pendingReleaseHandle: Long = 0L
         @Volatile
         private var scene: DemoScene = DemoScene.SHAPES
 
@@ -40,11 +43,19 @@ class SkityRenderSurfaceView @JvmOverloads constructor(
             }
         }
 
-        fun release() {
-            if (rendererHandle != 0L) {
-                SkityNative.onSurfaceDestroyed(rendererHandle)
-                SkityNative.destroyRenderer(rendererHandle)
-                rendererHandle = 0L
+        fun getOverlayDetails(): String = SkityNative.getRendererOverlay(rendererHandle)
+
+        fun prepareForRelease() {
+            pendingReleaseHandle = rendererHandle
+            rendererHandle = 0L
+        }
+
+        fun releaseOnGlThread() {
+            val handle = pendingReleaseHandle
+            if (handle != 0L) {
+                SkityNative.onSurfaceDestroyed(handle)
+                SkityNative.destroyRenderer(handle)
+                pendingReleaseHandle = 0L
             }
         }
 

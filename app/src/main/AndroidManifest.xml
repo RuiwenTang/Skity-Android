@@ -20,6 +20,10 @@
             android:name=".CapabilityInfoActivity"
             android:exported="false"
             android:label="@string/title_capability_info" />
+        <activity
+            android:name=".PerformanceTestActivity"
+            android:exported="false"
+            android:label="@string/title_performance_test" />
 
         <activity
             android:name=".SceneGalleryActivity"

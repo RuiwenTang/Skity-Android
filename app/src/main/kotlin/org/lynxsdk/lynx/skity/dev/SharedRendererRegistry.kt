@@ -2,6 +2,8 @@ package org.lynxsdk.lynx.skity.dev
 
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
+import android.view.Choreographer
 import android.view.Surface
 
 object SharedRendererRegistry {
@@ -13,6 +15,7 @@ object SharedRendererRegistry {
 class SharedVulkanRendererSession {
     private val renderThread = HandlerThread("SkityVulkanRenderThread").apply { start() }
     private val renderHandler = Handler(renderThread.looper)
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     @Volatile
     private var resumed = false
@@ -23,19 +26,39 @@ class SharedVulkanRendererSession {
     @Volatile
     private var scene: DemoScene = DemoScene.SHAPES
 
-    private var rendererHandle: Long = 0L
+    @Volatile
+    private var validationRequested = false
 
-    private val frameRunnable = object : Runnable {
-        override fun run() {
+    @Volatile
+    private var currentSurface: Surface? = null
+
+    @Volatile
+    private var currentWidth = 0
+
+    @Volatile
+    private var currentHeight = 0
+
+    private var rendererHandle: Long = 0L
+    @Volatile
+    private var frameCallbackScheduled = false
+
+    private val frameCallback = object : Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            frameCallbackScheduled = false
             if (resumed && surfaceReady && rendererHandle != 0L) {
-                SkityNative.drawFrame(rendererHandle)
-                renderHandler.postDelayed(this, FRAME_DELAY_MS)
+                renderHandler.post {
+                    if (resumed && surfaceReady && rendererHandle != 0L) {
+                        SkityNative.drawFrame(rendererHandle)
+                    }
+                }
+                requestFrame()
             }
         }
     }
 
     fun attachSurface(surface: Surface, scene: DemoScene) {
         this.scene = scene
+        currentSurface = surface
         renderHandler.post {
             ensureRenderer()
             SkityNative.setSurface(rendererHandle, surface)
@@ -48,7 +71,8 @@ class SharedVulkanRendererSession {
 
     fun detachSurface() {
         surfaceReady = false
-        renderHandler.removeCallbacks(frameRunnable)
+        currentSurface = null
+        cancelFrameCallback()
         renderHandler.post {
             if (rendererHandle != 0L) {
                 SkityNative.setSurface(rendererHandle, null)
@@ -62,18 +86,20 @@ class SharedVulkanRendererSession {
         renderHandler.post {
             if (rendererHandle != 0L) {
                 SkityNative.setScene(rendererHandle, scene.ordinal)
-                requestFrame()
             }
         }
+        requestFrame()
     }
 
     fun updateSize(width: Int, height: Int) {
+        currentWidth = width
+        currentHeight = height
         renderHandler.post {
             if (rendererHandle != 0L) {
                 SkityNative.onSurfaceChanged(rendererHandle, width, height)
-                requestFrame()
             }
         }
+        requestFrame()
     }
 
     fun onResumeRendering() {
@@ -83,23 +109,73 @@ class SharedVulkanRendererSession {
 
     fun onPauseRendering() {
         resumed = false
-        renderHandler.removeCallbacks(frameRunnable)
+        cancelFrameCallback()
+    }
+
+    fun getOverlayDetails(): String = SkityNative.getRendererOverlay(rendererHandle)
+
+    fun setValidationRequested(enabled: Boolean) {
+        validationRequested = enabled
+        renderHandler.post {
+            recreateRendererIfNeeded()
+        }
     }
 
     private fun ensureRenderer() {
         if (rendererHandle == 0L) {
-            rendererHandle = SkityNative.createRenderer(BackendType.VULKAN)
+            rendererHandle = SkityNative.createRenderer(
+                backend = BackendType.VULKAN,
+                enableVulkanValidation = validationRequested
+            )
+        }
+    }
+
+    private fun recreateRendererIfNeeded() {
+        if (rendererHandle == 0L) {
+            return
+        }
+
+        val currentSurfaceReady = surfaceReady
+        val currentScene = scene
+        val surface = currentSurface
+        val width = currentWidth
+        val height = currentHeight
+
+        if (currentSurfaceReady) {
+            SkityNative.setSurface(rendererHandle, null)
+            SkityNative.onSurfaceDestroyed(rendererHandle)
+        }
+        SkityNative.destroyRenderer(rendererHandle)
+        rendererHandle = 0L
+        ensureRenderer()
+        if (currentSurfaceReady && surface != null) {
+            SkityNative.setSurface(rendererHandle, surface)
+            SkityNative.setScene(rendererHandle, currentScene.ordinal)
+            SkityNative.onSurfaceCreated(rendererHandle)
+            if (width > 0 && height > 0) {
+                SkityNative.onSurfaceChanged(rendererHandle, width, height)
+            }
+            requestFrame()
         }
     }
 
     private fun requestFrame() {
-        renderHandler.removeCallbacks(frameRunnable)
-        if (resumed && surfaceReady) {
-            renderHandler.post(frameRunnable)
+        if (!resumed || !surfaceReady || frameCallbackScheduled) {
+            return
+        }
+        frameCallbackScheduled = true
+        mainHandler.post {
+            Choreographer.getInstance().postFrameCallback(frameCallback)
         }
     }
 
-    private companion object {
-        const val FRAME_DELAY_MS = 16L
+    private fun cancelFrameCallback() {
+        if (!frameCallbackScheduled) {
+            return
+        }
+        frameCallbackScheduled = false
+        mainHandler.post {
+            Choreographer.getInstance().removeFrameCallback(frameCallback)
+        }
     }
 }

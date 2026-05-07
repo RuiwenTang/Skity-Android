@@ -3,6 +3,7 @@
     <string name="launcher_subtitle">A lightweight Android shell for scene preview, backend comparison, and skity integration validation.</string>
     <string name="title_scene_gallery">Scene Gallery</string>
     <string name="title_backend_compare">Backend Compare</string>
+    <string name="title_performance_test">Performance Test</string>
     <string name="title_capability_info">Capability Info</string>
     <string name="scene_gallery_subtitle">Preview a single scene and switch the intended backend target for validation.</string>
     <string name="backend_compare_subtitle">Keep the same scene visible while comparing GLES and Vulkan expectations side by side.</string>

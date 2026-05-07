@@ -2,6 +2,8 @@
 
 #include <android/native_window.h>
 
+#include <string>
+
 namespace skity::demo {
 
 class RenderBackend {
@@ -14,6 +16,7 @@ class RenderBackend {
   virtual void OnSurfaceChanged(int width, int height) = 0;
   virtual void SetScene(int scene) = 0;
   virtual void DrawFrame() = 0;
+  virtual std::string GetOverlayText() const = 0;
 };
 
 }  // namespace skity::demo

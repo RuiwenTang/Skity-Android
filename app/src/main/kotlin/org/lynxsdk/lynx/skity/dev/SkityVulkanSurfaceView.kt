@@ -30,6 +30,8 @@ class SkityVulkanSurfaceView @JvmOverloads constructor(
         session.onPauseRendering()
     }
 
+    fun getOverlayDetails(): String = session.getOverlayDetails()
+
     fun release() {
         session.detachSurface()
     }

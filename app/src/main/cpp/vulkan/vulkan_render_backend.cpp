@@ -10,23 +10,33 @@
 
 #include "common/demo_scene.hpp"
 #include "common/demo_scene_renderer.hpp"
+#include "vulkan/vulkan_probe.hpp"
 
 namespace skity::demo {
 
 namespace {
-#if defined(SKITY_DEV_ENABLE_VULKAN_VALIDATION) && \
-    SKITY_DEV_ENABLE_VULKAN_VALIDATION
-constexpr bool kValidationEnabled = true;
+#if defined(SKITY_DEV_ALLOW_VULKAN_VALIDATION) && \
+    SKITY_DEV_ALLOW_VULKAN_VALIDATION
+constexpr bool kValidationRuntimeAvailable = true;
 #else
-constexpr bool kValidationEnabled = false;
+constexpr bool kValidationRuntimeAvailable = false;
 #endif
+
+bool ResolveValidationEnabled(bool requested) {
+  return kValidationRuntimeAvailable && requested;
+}
 }  // namespace
 
-std::unique_ptr<RenderBackend> CreateVulkanRenderBackend() {
-  return std::make_unique<VulkanRenderBackend>();
+std::unique_ptr<RenderBackend> CreateVulkanRenderBackend(bool enable_validation) {
+  return std::make_unique<VulkanRenderBackend>(enable_validation);
 }
 
-VulkanRenderBackend::VulkanRenderBackend() = default;
+VulkanRenderBackend::VulkanRenderBackend(bool enable_validation)
+    : validation_enabled_(ResolveValidationEnabled(enable_validation)) {
+  diagnostics_.SetBackendName("Vulkan");
+  diagnostics_.SetSurfaceName("Swapchain");
+  diagnostics_.SetValidationEnabled(validation_enabled_);
+}
 
 VulkanRenderBackend::~VulkanRenderBackend() {
   ResetNativeWindow();
@@ -49,11 +59,13 @@ void VulkanRenderBackend::OnSurfaceCreated() {
 
 void VulkanRenderBackend::OnSurfaceDestroyed() {
   ResetNativeWindow();
+  diagnostics_.SetSurfaceSize(0, 0);
 }
 
 void VulkanRenderBackend::OnSurfaceChanged(int width, int height) {
   width_ = static_cast<uint32_t>(width);
   height_ = static_cast<uint32_t>(height);
+  diagnostics_.SetSurfaceSize(width, height);
 
   if (native_window_ != nullptr) {
     native_window_->Resize(width_, height_);
@@ -98,10 +110,11 @@ void VulkanRenderBackend::DrawFrame() {
   }
 
   DrawDemoScene(canvas, static_cast<DemoScene>(scene_.load()),
-                DemoBackend::kVulkan, kValidationEnabled,
+                DemoBackend::kVulkan, validation_enabled_,
                 static_cast<int>(width_), static_cast<int>(height_));
   canvas->Flush();
   surface->Flush();
+  diagnostics_.RecordFrame();
 
   const auto present_result = presenter->Present(std::move(surface));
   if (present_result == skity::GPUPresenterStatus::kNeedRecreate) {
@@ -114,15 +127,12 @@ bool VulkanRenderBackend::EnsureContext() {
     return true;
   }
 
-#if defined(SKITY_DEV_ENABLE_VULKAN_VALIDATION) && \
-    SKITY_DEV_ENABLE_VULKAN_VALIDATION
   skity::GPUContextInfoVK context_info = {};
   context_info.get_instance_proc_addr = vkGetInstanceProcAddr;
-  context_info.enable_debug_runtime = true;
+  context_info.enable_debug_runtime = validation_enabled_;
   context_ = skity::CreateGPUContextVK(&context_info);
-#else
-  context_ = skity::CreateGPUContextVK(vkGetInstanceProcAddr);
-#endif
+  diagnostics_.SetContextReady(context_ != nullptr);
+  UpdateProbeInfo();
   return context_ != nullptr;
 }
 
@@ -153,6 +163,24 @@ void VulkanRenderBackend::ResetNativeWindow() {
     ANativeWindow_release(native_window_handle_);
     native_window_handle_ = nullptr;
   }
+}
+
+void VulkanRenderBackend::UpdateProbeInfo() {
+  if (probe_info_loaded_) {
+    return;
+  }
+
+  const auto probe_info = ProbeVulkanDeviceInfo();
+  diagnostics_.SetGpuInfo(probe_info.vendor_name.c_str(),
+                          probe_info.renderer_name.c_str(),
+                          probe_info.version_name.c_str());
+  diagnostics_.SetMemoryInfo(probe_info.total_memory_bytes,
+                             probe_info.device_local_memory_bytes);
+  probe_info_loaded_ = true;
+}
+
+std::string VulkanRenderBackend::GetOverlayText() const {
+  return diagnostics_.BuildOverlayText();
 }
 
 }  // namespace skity::demo
