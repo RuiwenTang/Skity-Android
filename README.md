@@ -1,7 +1,7 @@
 # Skity Android Workspace
 
 This repository is an Android-focused development and validation workspace for
-[skity](https://github.com/skity-dev/skity).
+[skity](https://github.com/lynx-family/skity).
 
 It is used to build skity on Android, validate rendering behavior on real
 devices, and compare `GLES` and `Vulkan` backends in a lightweight host app.
