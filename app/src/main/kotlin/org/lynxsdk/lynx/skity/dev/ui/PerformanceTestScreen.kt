@@ -28,6 +28,7 @@ import org.lynxsdk.lynx.skity.dev.DemoScene
 import org.lynxsdk.lynx.skity.dev.RenderQualitySettings
 import org.lynxsdk.lynx.skity.dev.SharedRendererRegistry
 import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
+import org.lynxsdk.lynx.skity.dev.VulkanFramePacingSettings
 import org.lynxsdk.lynx.skity.dev.VulkanMinImageCountSettings
 import org.lynxsdk.lynx.skity.dev.VulkanPresentModeSettings
 import kotlinx.coroutines.delay
@@ -88,6 +89,7 @@ fun PerformanceTestScreen() {
     val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
     val presentMode = VulkanPresentModeSettings.presentMode
     val minImageCount = VulkanMinImageCountSettings.minImageCount
+    val framePacingMode = VulkanFramePacingSettings.mode
 
     LaunchedEffect(running, duration, statsProvider) {
         if (!running) {
@@ -107,13 +109,23 @@ fun PerformanceTestScreen() {
         running = false
     }
 
-    val summary = remember(samples.toList(), workload, backend, duration, validationRequested, presentMode) {
+    val summary = remember(
+        samples.toList(),
+        workload,
+        backend,
+        duration,
+        validationRequested,
+        presentMode,
+        minImageCount,
+        framePacingMode
+    ) {
         buildBenchmarkSummary(
             workload = workload,
             backend = backend,
             duration = duration,
             validationRequested = validationRequested,
             minImageCountTitle = minImageCount.title,
+            framePacingTitle = framePacingMode.title,
             samples = samples
         )
     }
@@ -170,6 +182,12 @@ fun PerformanceTestScreen() {
                     onMinImageCountSelected = { count ->
                         VulkanMinImageCountSettings.updateMinImageCount(count)
                         SharedRendererRegistry.vulkanSession.setMinImageCount(count.imageCount)
+                    },
+                    showFramePacing = backend == BackendType.VULKAN,
+                    framePacingMode = framePacingMode,
+                    onFramePacingModeSelected = { mode ->
+                        VulkanFramePacingSettings.updateMode(mode)
+                        SharedRendererRegistry.vulkanSession.setFramePacingMode(mode)
                     },
                     showPresentMode = backend == BackendType.VULKAN,
                     presentMode = presentMode,
@@ -263,6 +281,7 @@ private fun buildBenchmarkSummary(
     duration: BenchmarkDuration,
     validationRequested: Boolean,
     minImageCountTitle: String,
+    framePacingTitle: String,
     samples: List<BenchmarkSample>
 ): String {
     if (samples.isEmpty()) {
@@ -271,6 +290,7 @@ private fun buildBenchmarkSummary(
             appendLine("Backend: ${backend.title}")
             appendLine("Duration: ${duration.seconds}s")
             if (backend == BackendType.VULKAN) {
+                appendLine("Frame pacing: $framePacingTitle")
                 appendLine("Swapchain images: $minImageCountTitle")
                 appendLine("Present mode: ${VulkanPresentModeSettings.presentMode.title}")
             }
@@ -291,6 +311,7 @@ private fun buildBenchmarkSummary(
         appendLine("Backend: ${backend.title}")
         appendLine("Duration: ${duration.seconds}s")
         if (backend == BackendType.VULKAN) {
+            appendLine("Frame pacing: $framePacingTitle")
             appendLine("Swapchain images: $minImageCountTitle")
             appendLine("Present mode: ${VulkanPresentModeSettings.presentMode.title}")
             appendLine("Validation requested: ${if (validationRequested) "on" else "off"}")

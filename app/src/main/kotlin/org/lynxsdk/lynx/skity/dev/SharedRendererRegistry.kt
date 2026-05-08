@@ -32,6 +32,8 @@ class SharedVulkanRendererSession {
     private var presentMode = VulkanPresentMode.FIFO
     @Volatile
     private var minImageCount = VulkanMinImageCount.DOUBLE.imageCount
+    @Volatile
+    private var framePacingMode = VulkanFramePacingMode.CHOREOGRAPHER
 
     @Volatile
     private var currentSurface: Surface? = null
@@ -47,17 +49,34 @@ class SharedVulkanRendererSession {
     private var rendererHandle: Long = 0L
     @Volatile
     private var frameCallbackScheduled = false
+    @Volatile
+    private var renderLoopScheduled = false
 
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             frameCallbackScheduled = false
-            if (resumed && surfaceReady && rendererHandle != 0L) {
+            if (shouldRender() && framePacingMode == VulkanFramePacingMode.CHOREOGRAPHER) {
                 renderHandler.post {
-                    if (resumed && surfaceReady && rendererHandle != 0L) {
+                    if (shouldRender() && framePacingMode == VulkanFramePacingMode.CHOREOGRAPHER) {
                         SkityNative.drawFrame(rendererHandle)
                     }
                 }
                 requestFrame()
+            }
+        }
+    }
+
+    private val renderLoopRunnable = object : Runnable {
+        override fun run() {
+            renderLoopScheduled = false
+            if (!shouldRender() || framePacingMode != VulkanFramePacingMode.PRESENTER) {
+                return
+            }
+
+            SkityNative.drawFrame(rendererHandle)
+
+            if (shouldRender() && framePacingMode == VulkanFramePacingMode.PRESENTER) {
+                schedulePresenterLoop()
             }
         }
     }
@@ -79,7 +98,7 @@ class SharedVulkanRendererSession {
     fun detachSurface() {
         surfaceReady = false
         currentSurface = null
-        cancelFrameCallback()
+        cancelFrameScheduling()
         renderHandler.post {
             if (rendererHandle != 0L) {
                 SkityNative.setSurface(rendererHandle, null)
@@ -116,7 +135,7 @@ class SharedVulkanRendererSession {
 
     fun onPauseRendering() {
         resumed = false
-        cancelFrameCallback()
+        cancelFrameScheduling()
     }
 
     fun getOverlayDetails(): String = SkityNative.getRendererOverlay(rendererHandle)
@@ -140,6 +159,15 @@ class SharedVulkanRendererSession {
         renderHandler.post {
             recreateRendererIfNeeded()
         }
+    }
+
+    fun setFramePacingMode(mode: VulkanFramePacingMode) {
+        framePacingMode = mode
+        renderHandler.post {
+            cancelPresenterLoop()
+        }
+        cancelFrameCallback()
+        requestFrame()
     }
 
     fun setMsaaSampleCount(sampleCount: Int) {
@@ -193,12 +221,23 @@ class SharedVulkanRendererSession {
     }
 
     private fun requestFrame() {
-        if (!resumed || !surfaceReady || frameCallbackScheduled) {
+        if (!shouldRender()) {
             return
         }
-        frameCallbackScheduled = true
-        mainHandler.post {
-            Choreographer.getInstance().postFrameCallback(frameCallback)
+
+        when (framePacingMode) {
+            VulkanFramePacingMode.CHOREOGRAPHER -> {
+                if (frameCallbackScheduled) {
+                    return
+                }
+                frameCallbackScheduled = true
+                mainHandler.post {
+                    Choreographer.getInstance().postFrameCallback(frameCallback)
+                }
+            }
+            VulkanFramePacingMode.PRESENTER -> {
+                schedulePresenterLoop()
+            }
         }
     }
 
@@ -210,5 +249,29 @@ class SharedVulkanRendererSession {
         mainHandler.post {
             Choreographer.getInstance().removeFrameCallback(frameCallback)
         }
+    }
+
+    private fun cancelPresenterLoop() {
+        renderLoopScheduled = false
+        renderHandler.removeCallbacks(renderLoopRunnable)
+    }
+
+    private fun schedulePresenterLoop() {
+        if (renderLoopScheduled) {
+            return
+        }
+        renderLoopScheduled = true
+        renderHandler.post(renderLoopRunnable)
+    }
+
+    private fun cancelFrameScheduling() {
+        cancelFrameCallback()
+        renderHandler.post {
+            cancelPresenterLoop()
+        }
+    }
+
+    private fun shouldRender(): Boolean {
+        return resumed && surfaceReady && rendererHandle != 0L
     }
 }

@@ -62,6 +62,8 @@ import org.lynxsdk.lynx.skity.dev.SkityRenderSurfaceView
 import org.lynxsdk.lynx.skity.dev.SkityNative
 import org.lynxsdk.lynx.skity.dev.SkityVulkanSurfaceView
 import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
+import org.lynxsdk.lynx.skity.dev.VulkanFramePacingMode
+import org.lynxsdk.lynx.skity.dev.VulkanFramePacingSettings
 import org.lynxsdk.lynx.skity.dev.VulkanMinImageCount
 import org.lynxsdk.lynx.skity.dev.VulkanMinImageCountSettings
 import org.lynxsdk.lynx.skity.dev.VulkanPresentMode
@@ -90,6 +92,10 @@ private enum class RenderSettingInfo(
     SWAPCHAIN_IMAGES(
         "Vulkan Swapchain Images",
         "Choose the requested minimum Vulkan swapchain image count. The driver may clamp the final value to surface limits."
+    ),
+    FRAME_PACING(
+        "Vulkan Frame Pacing",
+        "Choose whether Vulkan frames are triggered by Android Choreographer or by a render-thread self-paced loop. Presenter pacing is useful for swapchain experiments, especially with FIFO."
     ),
     VALIDATION(
         "Vulkan Validation",
@@ -146,6 +152,7 @@ fun SceneGalleryScreen() {
     val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
     val presentMode = VulkanPresentModeSettings.presentMode
     val minImageCount = VulkanMinImageCountSettings.minImageCount
+    val framePacingMode = VulkanFramePacingSettings.mode
 
     Column(
         modifier = Modifier
@@ -206,6 +213,12 @@ fun SceneGalleryScreen() {
                 VulkanMinImageCountSettings.updateMinImageCount(count)
                 SharedRendererRegistry.vulkanSession.setMinImageCount(count.imageCount)
             },
+            showFramePacing = true,
+            framePacingMode = framePacingMode,
+            onFramePacingModeSelected = { mode ->
+                VulkanFramePacingSettings.updateMode(mode)
+                SharedRendererRegistry.vulkanSession.setFramePacingMode(mode)
+            },
             showPresentMode = true,
             presentMode = presentMode,
             onPresentModeSelected = { mode ->
@@ -235,6 +248,7 @@ fun BackendCompareScreen() {
     val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
     val presentMode = VulkanPresentModeSettings.presentMode
     val minImageCount = VulkanMinImageCountSettings.minImageCount
+    val framePacingMode = VulkanFramePacingSettings.mode
 
     Column(
         modifier = Modifier
@@ -274,6 +288,12 @@ fun BackendCompareScreen() {
             onMinImageCountSelected = { count ->
                 VulkanMinImageCountSettings.updateMinImageCount(count)
                 SharedRendererRegistry.vulkanSession.setMinImageCount(count.imageCount)
+            },
+            showFramePacing = true,
+            framePacingMode = framePacingMode,
+            onFramePacingModeSelected = { mode ->
+                VulkanFramePacingSettings.updateMode(mode)
+                SharedRendererRegistry.vulkanSession.setFramePacingMode(mode)
             },
             showPresentMode = true,
             presentMode = presentMode,
@@ -374,6 +394,9 @@ internal fun RenderOptionsCard(
     showMinImageCount: Boolean,
     minImageCount: VulkanMinImageCount,
     onMinImageCountSelected: (VulkanMinImageCount) -> Unit,
+    showFramePacing: Boolean,
+    framePacingMode: VulkanFramePacingMode,
+    onFramePacingModeSelected: (VulkanFramePacingMode) -> Unit,
     showPresentMode: Boolean,
     presentMode: VulkanPresentMode,
     onPresentModeSelected: (VulkanPresentMode) -> Unit,
@@ -414,6 +437,23 @@ internal fun RenderOptionsCard(
                                 fontSize = 11.sp
                             ),
                             onSelected = onMinImageCountSelected
+                        )
+                    }
+                }
+                if (showFramePacing) {
+                    CompactDropdownRow(
+                        title = "Pacing",
+                        onInfoClick = { infoDialog = RenderSettingInfo.FRAME_PACING }
+                    ) { modifier ->
+                        EnumDropdown(
+                            selected = framePacingMode,
+                            values = VulkanFramePacingMode.entries.toTypedArray(),
+                            itemLabel = { it.title },
+                            modifier = modifier,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 11.sp
+                            ),
+                            onSelected = onFramePacingModeSelected
                         )
                     }
                 }
