@@ -13,6 +13,8 @@ enum class DemoScene(val title: String, val description: String) {
     TILING("Tiling Grid", "Dense repeated primitives and layout consistency in tiled content."),
     CLIPS("Clip Stack", "Nested clipping, transforms, and constrained drawing regions."),
     LAYERS("Layer Blend", "Alpha overlap, compositing, and save-layer style behavior."),
+    LAYERS_LITE("Layer Blend Lite", "Same blend-style scene with fewer save-layer passes for profiling."),
+    LAYERS_FLAT("Layer Blend Flat", "Transparent overlap without save-layer passes to isolate compositing cost."),
     TEXT_CLOUD("Text Cloud", "Dense glyph placement, varied sizes, and repeated text draws."),
     STRESS_PATHS("Stress Paths", "Many repeated path fills and strokes for heavier vector load."),
     DASHBOARD("Dashboard Cards", "Card-style panels, mini charts, and mixed typography blocks."),

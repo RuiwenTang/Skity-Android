@@ -378,7 +378,8 @@ void DrawClipsScene(Canvas* canvas, int width, int height) {
   canvas->Restore();
 }
 
-void DrawLayersScene(Canvas* canvas, int width, int height) {
+void DrawLayersSceneWithOptions(Canvas* canvas, int width, int height,
+                                int layer_count, bool use_save_layer) {
   Paint bg;
   bg.SetAntiAlias(true);
   bg.SetColor(Argb(0xFF, 0x10, 0x17, 0x2F));
@@ -386,7 +387,7 @@ void DrawLayersScene(Canvas* canvas, int width, int height) {
       MakeRect(width * 0.08f, height * 0.12f, width * 0.92f, height * 0.88f),
       22.f, 22.f, bg);
 
-  for (int layer = 0; layer < 6; ++layer) {
+  for (int layer = 0; layer < layer_count; ++layer) {
     Paint layer_paint;
     layer_paint.SetAntiAlias(true);
     layer_paint.SetColor(Argb(static_cast<uint8_t>(120 + layer * 18), 0xFF,
@@ -396,12 +397,28 @@ void DrawLayersScene(Canvas* canvas, int width, int height) {
                                  height * 0.20f + layer * 10.f,
                                  width * 0.80f - layer * 10.f,
                                  height * 0.78f - layer * 8.f);
-    canvas->SaveLayer(bounds, Paint{});
+    if (use_save_layer) {
+      canvas->SaveLayer(bounds, Paint{});
+    }
     canvas->DrawCircle(width * 0.34f + layer * 22.f, height * 0.36f + layer * 18.f,
                        34.f + layer * 6.f, layer_paint);
     canvas->DrawRoundRect(bounds, 18.f, 18.f, layer_paint);
-    canvas->Restore();
+    if (use_save_layer) {
+      canvas->Restore();
+    }
   }
+}
+
+void DrawLayersScene(Canvas* canvas, int width, int height) {
+  DrawLayersSceneWithOptions(canvas, width, height, 6, true);
+}
+
+void DrawLayersLiteScene(Canvas* canvas, int width, int height) {
+  DrawLayersSceneWithOptions(canvas, width, height, 3, true);
+}
+
+void DrawLayersFlatScene(Canvas* canvas, int width, int height) {
+  DrawLayersSceneWithOptions(canvas, width, height, 6, false);
 }
 
 void DrawTextCloudScene(Canvas* canvas, int width, int height) {
@@ -633,6 +650,12 @@ void DrawDemoScene(Canvas* canvas, DemoScene scene, DemoBackend backend,
       break;
     case DemoScene::kLayers:
       DrawLayersScene(canvas, width, height);
+      break;
+    case DemoScene::kLayersLite:
+      DrawLayersLiteScene(canvas, width, height);
+      break;
+    case DemoScene::kLayersFlat:
+      DrawLayersFlatScene(canvas, width, height);
       break;
     case DemoScene::kTextCloud:
       DrawTextCloudScene(canvas, width, height);

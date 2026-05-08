@@ -53,6 +53,11 @@ void RendererDiagnostics::SetSurfaceName(const char* surface_name) {
   surface_name_ = SafeString(surface_name);
 }
 
+void RendererDiagnostics::SetSurfaceImageCount(uint32_t image_count) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  surface_image_count_ = image_count;
+}
+
 void RendererDiagnostics::SetPresentModeRequest(int32_t present_mode) {
   std::lock_guard<std::mutex> lock(mutex_);
   present_mode_request_ = present_mode;
@@ -124,8 +129,11 @@ std::string RendererDiagnostics::BuildOverlayText() const {
   std::ostringstream stream;
   stream << std::fixed << std::setprecision(1);
   stream << "Backend: " << backend_name_ << '\n';
-  stream << "Surface: " << surface_name_ << "  " << width_ << "x" << height_
-         << '\n';
+  stream << "Surface: " << surface_name_ << "  " << width_ << "x" << height_;
+  if (surface_image_count_ > 0) {
+    stream << "  images " << surface_image_count_;
+  }
+  stream << '\n';
   if (const char* request_name = PresentModeName(present_mode_request_);
       request_name[0] != '\0') {
     stream << "Present Request: " << request_name << '\n';

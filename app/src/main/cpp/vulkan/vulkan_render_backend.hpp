@@ -17,11 +17,12 @@ class GPUNativeWindowVK;
 namespace skity::demo {
 
 std::unique_ptr<RenderBackend> CreateVulkanRenderBackend(
-    bool enable_validation, int present_mode);
+    bool enable_validation, int present_mode, int min_image_count);
 
 class VulkanRenderBackend final : public RenderBackend {
  public:
-  VulkanRenderBackend(bool enable_validation, int present_mode);
+  VulkanRenderBackend(bool enable_validation, int present_mode,
+                      int min_image_count);
   ~VulkanRenderBackend() override;
 
   void SetNativeWindow(ANativeWindow* native_window) override;
@@ -50,6 +51,7 @@ class VulkanRenderBackend final : public RenderBackend {
   bool probe_info_loaded_ = false;
   bool validation_enabled_ = false;
   VkPresentModeKHR present_mode_ = VK_PRESENT_MODE_FIFO_KHR;
+  uint32_t min_image_count_ = 2;
 };
 
 }  // namespace skity::demo

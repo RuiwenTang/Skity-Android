@@ -30,6 +30,8 @@ class SharedVulkanRendererSession {
     private var validationRequested = false
     @Volatile
     private var presentMode = VulkanPresentMode.FIFO
+    @Volatile
+    private var minImageCount = VulkanMinImageCount.DOUBLE.imageCount
 
     @Volatile
     private var currentSurface: Surface? = null
@@ -133,6 +135,13 @@ class SharedVulkanRendererSession {
         }
     }
 
+    fun setMinImageCount(count: Int) {
+        minImageCount = count
+        renderHandler.post {
+            recreateRendererIfNeeded()
+        }
+    }
+
     fun setMsaaSampleCount(sampleCount: Int) {
         msaaSampleCount = sampleCount
         renderHandler.post {
@@ -147,7 +156,8 @@ class SharedVulkanRendererSession {
             rendererHandle = SkityNative.createRenderer(
                 backend = BackendType.VULKAN,
                 enableVulkanValidation = validationRequested,
-                vulkanPresentMode = presentMode
+                vulkanPresentMode = presentMode,
+                vulkanMinImageCount = minImageCount
             )
             SkityNative.setMsaaSampleCount(rendererHandle, msaaSampleCount)
         }

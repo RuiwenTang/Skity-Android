@@ -10,6 +10,7 @@ class RendererDiagnostics {
  public:
   void SetBackendName(const char* backend_name);
   void SetSurfaceName(const char* surface_name);
+  void SetSurfaceImageCount(uint32_t image_count);
   void SetPresentModeRequest(int32_t present_mode);
   void SetPresentModeActual(int32_t present_mode);
   void SetValidationEnabled(bool enabled);
@@ -29,6 +30,7 @@ class RendererDiagnostics {
   mutable std::mutex mutex_;
   std::string backend_name_ = "Unknown";
   std::string surface_name_ = "Unknown";
+  uint32_t surface_image_count_ = 0;
   int32_t present_mode_request_ = 0;
   int32_t present_mode_actual_ = 0;
   std::string gpu_vendor_ = "Unknown";

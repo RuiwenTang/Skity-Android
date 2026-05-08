@@ -29,6 +29,7 @@ bool ResolveValidationEnabled(bool requested) {
 constexpr int kPresentModeFifo = 0;
 constexpr int kPresentModeMailbox = 1;
 constexpr int kPresentModeImmediate = 2;
+constexpr uint32_t kDefaultMinImageCount = 2u;
 
 VkPresentModeKHR ResolvePresentMode(int present_mode) {
   switch (present_mode) {
@@ -42,17 +43,27 @@ VkPresentModeKHR ResolvePresentMode(int present_mode) {
   }
 }
 
+uint32_t ResolveMinImageCount(int min_image_count) {
+  return min_image_count < static_cast<int>(kDefaultMinImageCount)
+             ? kDefaultMinImageCount
+             : static_cast<uint32_t>(min_image_count);
+}
+
 }  // namespace
 
 std::unique_ptr<RenderBackend> CreateVulkanRenderBackend(bool enable_validation,
-                                                         int present_mode) {
-  return std::make_unique<VulkanRenderBackend>(enable_validation, present_mode);
+                                                         int present_mode,
+                                                         int min_image_count) {
+  return std::make_unique<VulkanRenderBackend>(enable_validation, present_mode,
+                                               min_image_count);
 }
 
 VulkanRenderBackend::VulkanRenderBackend(bool enable_validation,
-                                         int present_mode)
+                                         int present_mode,
+                                         int min_image_count)
     : validation_enabled_(ResolveValidationEnabled(enable_validation)),
-      present_mode_(ResolvePresentMode(present_mode)) {
+      present_mode_(ResolvePresentMode(present_mode)),
+      min_image_count_(ResolveMinImageCount(min_image_count)) {
   diagnostics_.SetBackendName("Vulkan");
   diagnostics_.SetSurfaceName("Swapchain");
   diagnostics_.SetPresentModeRequest(static_cast<int32_t>(present_mode_));
@@ -180,12 +191,16 @@ bool VulkanRenderBackend::EnsureNativeWindow() {
   info.width = width_;
   info.height = height_;
   info.present_mode = present_mode_;
+  info.min_image_count = min_image_count_;
 
   native_window_ = skity::CreateGPUNativeWindowVK(context_.get(), &info);
   if (native_window_ != nullptr && native_window_->GetPresenter() != nullptr) {
+    diagnostics_.SetSurfaceImageCount(
+        native_window_->GetPresenter()->GetImageCount());
     diagnostics_.SetPresentModeActual(
         native_window_->GetPresenter()->GetPresentMode());
   } else {
+    diagnostics_.SetSurfaceImageCount(0);
     diagnostics_.SetPresentModeActual(0);
   }
   return native_window_ != nullptr;
@@ -193,6 +208,7 @@ bool VulkanRenderBackend::EnsureNativeWindow() {
 
 void VulkanRenderBackend::ResetNativeWindow() {
   native_window_.reset();
+  diagnostics_.SetSurfaceImageCount(0);
   diagnostics_.SetPresentModeActual(0);
   if (native_window_handle_ != nullptr) {
     ANativeWindow_release(native_window_handle_);

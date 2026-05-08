@@ -15,11 +15,13 @@ constexpr int kBackendVulkan = 2;
 std::unique_ptr<RenderBackend> CreateRenderBackend(
     int backend_type,
     bool enable_vulkan_validation,
-    int vulkan_present_mode) {
+    int vulkan_present_mode,
+    int vulkan_min_image_count) {
   switch (backend_type) {
     case kBackendVulkan:
       return CreateVulkanRenderBackend(enable_vulkan_validation,
-                                       vulkan_present_mode);
+                                       vulkan_present_mode,
+                                       vulkan_min_image_count);
     case kBackendAuto:
     case kBackendGles:
     default:
@@ -30,9 +32,10 @@ std::unique_ptr<RenderBackend> CreateRenderBackend(
 }  // namespace
 
 AppRenderer::AppRenderer(int backend_type, bool enable_vulkan_validation,
-                         int vulkan_present_mode)
+                         int vulkan_present_mode, int vulkan_min_image_count)
     : backend_(CreateRenderBackend(backend_type, enable_vulkan_validation,
-                                   vulkan_present_mode)) {}
+                                   vulkan_present_mode,
+                                   vulkan_min_image_count)) {}
 
 AppRenderer::~AppRenderer() = default;
 

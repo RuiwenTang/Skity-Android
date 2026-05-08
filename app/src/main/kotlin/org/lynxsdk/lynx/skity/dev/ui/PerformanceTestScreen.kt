@@ -28,6 +28,7 @@ import org.lynxsdk.lynx.skity.dev.DemoScene
 import org.lynxsdk.lynx.skity.dev.RenderQualitySettings
 import org.lynxsdk.lynx.skity.dev.SharedRendererRegistry
 import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
+import org.lynxsdk.lynx.skity.dev.VulkanMinImageCountSettings
 import org.lynxsdk.lynx.skity.dev.VulkanPresentModeSettings
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -86,6 +87,7 @@ fun PerformanceTestScreen() {
     val validationRequested = VulkanDebugSettings.validationRequested
     val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
     val presentMode = VulkanPresentModeSettings.presentMode
+    val minImageCount = VulkanMinImageCountSettings.minImageCount
 
     LaunchedEffect(running, duration, statsProvider) {
         if (!running) {
@@ -111,6 +113,7 @@ fun PerformanceTestScreen() {
             backend = backend,
             duration = duration,
             validationRequested = validationRequested,
+            minImageCountTitle = minImageCount.title,
             samples = samples
         )
     }
@@ -161,6 +164,12 @@ fun PerformanceTestScreen() {
                         SharedRendererRegistry.vulkanSession.setMsaaSampleCount(
                             RenderQualitySettings.msaaSampleCount
                         )
+                    },
+                    showMinImageCount = backend == BackendType.VULKAN,
+                    minImageCount = minImageCount,
+                    onMinImageCountSelected = { count ->
+                        VulkanMinImageCountSettings.updateMinImageCount(count)
+                        SharedRendererRegistry.vulkanSession.setMinImageCount(count.imageCount)
                     },
                     showPresentMode = backend == BackendType.VULKAN,
                     presentMode = presentMode,
@@ -253,6 +262,7 @@ private fun buildBenchmarkSummary(
     backend: BackendType,
     duration: BenchmarkDuration,
     validationRequested: Boolean,
+    minImageCountTitle: String,
     samples: List<BenchmarkSample>
 ): String {
     if (samples.isEmpty()) {
@@ -261,6 +271,7 @@ private fun buildBenchmarkSummary(
             appendLine("Backend: ${backend.title}")
             appendLine("Duration: ${duration.seconds}s")
             if (backend == BackendType.VULKAN) {
+                appendLine("Swapchain images: $minImageCountTitle")
                 appendLine("Present mode: ${VulkanPresentModeSettings.presentMode.title}")
             }
             append("Run the benchmark to collect aggregate results.")
@@ -280,6 +291,7 @@ private fun buildBenchmarkSummary(
         appendLine("Backend: ${backend.title}")
         appendLine("Duration: ${duration.seconds}s")
         if (backend == BackendType.VULKAN) {
+            appendLine("Swapchain images: $minImageCountTitle")
             appendLine("Present mode: ${VulkanPresentModeSettings.presentMode.title}")
             appendLine("Validation requested: ${if (validationRequested) "on" else "off"}")
         }

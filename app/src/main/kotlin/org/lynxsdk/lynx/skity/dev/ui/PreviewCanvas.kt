@@ -55,6 +55,8 @@ fun PreviewCanvas(
                 DemoScene.TILING -> drawTilingScene()
                 DemoScene.CLIPS -> drawClipsScene()
                 DemoScene.LAYERS -> drawLayersScene()
+                DemoScene.LAYERS_LITE -> drawLayersLiteScene()
+                DemoScene.LAYERS_FLAT -> drawLayersFlatScene()
                 DemoScene.TEXT_CLOUD -> drawTextCloudScene()
                 DemoScene.STRESS_PATHS -> drawStressPathsScene()
                 DemoScene.DASHBOARD -> drawDashboardScene()
@@ -516,6 +518,48 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLayersScene() {
             cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx())
         )
     }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLayersLiteScene() {
+    drawRoundRect(
+        color = Color(0xFF10172F),
+        topLeft = Offset(size.width * 0.08f, size.height * 0.12f),
+        size = Size(size.width * 0.84f, size.height * 0.76f),
+        cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
+    )
+    for (layer in 0 until 3) {
+        drawCircle(
+            color = Color(
+                red = 1.0f,
+                green = 0.35f + layer * 0.08f,
+                blue = 0.46f + layer * 0.05f,
+                alpha = 0.22f + layer * 0.08f
+            ),
+            radius = 26.dp.toPx() + layer * 5.dp.toPx(),
+            center = Offset(
+                size.width * 0.30f + layer * 22.dp.toPx(),
+                size.height * 0.32f + layer * 18.dp.toPx()
+            )
+        )
+        drawRoundRect(
+            color = Color(
+                red = 0.40f + layer * 0.06f,
+                green = 0.45f + layer * 0.05f,
+                blue = 0.88f - layer * 0.06f,
+                alpha = 0.18f + layer * 0.06f
+            ),
+            topLeft = Offset(
+                size.width * 0.18f + layer * 12.dp.toPx(),
+                size.height * 0.24f + layer * 10.dp.toPx()
+            ),
+            size = Size(size.width * 0.48f, size.height * 0.42f),
+            cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx())
+        )
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLayersFlatScene() {
+    drawLayersScene()
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTextCloudScene() {

@@ -62,6 +62,8 @@ import org.lynxsdk.lynx.skity.dev.SkityRenderSurfaceView
 import org.lynxsdk.lynx.skity.dev.SkityNative
 import org.lynxsdk.lynx.skity.dev.SkityVulkanSurfaceView
 import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
+import org.lynxsdk.lynx.skity.dev.VulkanMinImageCount
+import org.lynxsdk.lynx.skity.dev.VulkanMinImageCountSettings
 import org.lynxsdk.lynx.skity.dev.VulkanPresentMode
 import org.lynxsdk.lynx.skity.dev.VulkanPresentModeSettings
 import androidx.compose.runtime.LaunchedEffect
@@ -84,6 +86,10 @@ private enum class RenderSettingInfo(
     PRESENT_MODE(
         "Vulkan Present Mode",
         "Choose the requested Vulkan swapchain present mode. Unsupported modes may fall back to FIFO on the device."
+    ),
+    SWAPCHAIN_IMAGES(
+        "Vulkan Swapchain Images",
+        "Choose the requested minimum Vulkan swapchain image count. The driver may clamp the final value to surface limits."
     ),
     VALIDATION(
         "Vulkan Validation",
@@ -139,6 +145,7 @@ fun SceneGalleryScreen() {
     val validationRequested = VulkanDebugSettings.validationRequested
     val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
     val presentMode = VulkanPresentModeSettings.presentMode
+    val minImageCount = VulkanMinImageCountSettings.minImageCount
 
     Column(
         modifier = Modifier
@@ -193,6 +200,12 @@ fun SceneGalleryScreen() {
                     RenderQualitySettings.msaaSampleCount
                 )
             },
+            showMinImageCount = true,
+            minImageCount = minImageCount,
+            onMinImageCountSelected = { count ->
+                VulkanMinImageCountSettings.updateMinImageCount(count)
+                SharedRendererRegistry.vulkanSession.setMinImageCount(count.imageCount)
+            },
             showPresentMode = true,
             presentMode = presentMode,
             onPresentModeSelected = { mode ->
@@ -221,6 +234,7 @@ fun BackendCompareScreen() {
     val validationRequested = VulkanDebugSettings.validationRequested
     val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
     val presentMode = VulkanPresentModeSettings.presentMode
+    val minImageCount = VulkanMinImageCountSettings.minImageCount
 
     Column(
         modifier = Modifier
@@ -254,6 +268,12 @@ fun BackendCompareScreen() {
                 SharedRendererRegistry.vulkanSession.setMsaaSampleCount(
                     RenderQualitySettings.msaaSampleCount
                 )
+            },
+            showMinImageCount = true,
+            minImageCount = minImageCount,
+            onMinImageCountSelected = { count ->
+                VulkanMinImageCountSettings.updateMinImageCount(count)
+                SharedRendererRegistry.vulkanSession.setMinImageCount(count.imageCount)
             },
             showPresentMode = true,
             presentMode = presentMode,
@@ -351,6 +371,9 @@ internal fun InfoCard(title: String, body: String) {
 internal fun RenderOptionsCard(
     msaaEnabled: Boolean,
     onMsaaEnabledChange: (Boolean) -> Unit,
+    showMinImageCount: Boolean,
+    minImageCount: VulkanMinImageCount,
+    onMinImageCountSelected: (VulkanMinImageCount) -> Unit,
     showPresentMode: Boolean,
     presentMode: VulkanPresentMode,
     onPresentModeSelected: (VulkanPresentMode) -> Unit,
@@ -377,6 +400,23 @@ internal fun RenderOptionsCard(
                     onCheckedChange = onMsaaEnabledChange,
                     onInfoClick = { infoDialog = RenderSettingInfo.MSAA }
                 )
+                if (showMinImageCount) {
+                    CompactDropdownRow(
+                        title = "Swapchain",
+                        onInfoClick = { infoDialog = RenderSettingInfo.SWAPCHAIN_IMAGES }
+                    ) { modifier ->
+                        EnumDropdown(
+                            selected = minImageCount,
+                            values = VulkanMinImageCount.entries.toTypedArray(),
+                            itemLabel = { it.title },
+                            modifier = modifier,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 11.sp
+                            ),
+                            onSelected = onMinImageCountSelected
+                        )
+                    }
+                }
                 if (showPresentMode) {
                     CompactDropdownRow(
                         title = "Present Mode",

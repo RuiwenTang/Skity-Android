@@ -29,8 +29,14 @@ object SkityNative {
     fun createRenderer(
         backend: BackendType,
         enableVulkanValidation: Boolean = false,
-        vulkanPresentMode: VulkanPresentMode = VulkanPresentMode.FIFO
-    ): Long = nativeCreateRenderer(backend.ordinal, enableVulkanValidation, vulkanPresentMode.ordinal)
+        vulkanPresentMode: VulkanPresentMode = VulkanPresentMode.FIFO,
+        vulkanMinImageCount: Int = VulkanMinImageCount.DOUBLE.imageCount
+    ): Long = nativeCreateRenderer(
+        backend.ordinal,
+        enableVulkanValidation,
+        vulkanPresentMode.ordinal,
+        vulkanMinImageCount
+    )
 
     fun destroyRenderer(handle: Long) {
         nativeDestroyRenderer(handle)
@@ -78,7 +84,8 @@ object SkityNative {
     private external fun nativeCreateRenderer(
         backendType: Int,
         enableVulkanValidation: Boolean,
-        vulkanPresentMode: Int
+        vulkanPresentMode: Int,
+        vulkanMinImageCount: Int
     ): Long
 
     @JvmStatic

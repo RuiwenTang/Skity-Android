@@ -21,11 +21,13 @@ enum class DemoScene {
   kTiling = 9,
   kClips = 10,
   kLayers = 11,
-  kTextCloud = 12,
-  kStressPaths = 13,
-  kDashboard = 14,
-  kIconList = 15,
-  kCompositeStack = 16,
+  kLayersLite = 12,
+  kLayersFlat = 13,
+  kTextCloud = 14,
+  kStressPaths = 15,
+  kDashboard = 16,
+  kIconList = 17,
+  kCompositeStack = 18,
 };
 
 }  // namespace skity::demo
