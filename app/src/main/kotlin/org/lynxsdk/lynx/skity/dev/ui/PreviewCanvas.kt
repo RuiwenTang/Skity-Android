@@ -694,11 +694,13 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCompositeStackS
 
 @Composable
 fun SurfaceCard(
-    modifier: Modifier = Modifier, content: @Composable () -> Unit
+    modifier: Modifier = Modifier,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(8.dp),
+    content: @Composable () -> Unit
 ) {
     androidx.compose.material3.Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
@@ -707,7 +709,7 @@ fun SurfaceCard(
         Box(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(16.dp)
+                .padding(contentPadding)
         ) {
             content()
         }

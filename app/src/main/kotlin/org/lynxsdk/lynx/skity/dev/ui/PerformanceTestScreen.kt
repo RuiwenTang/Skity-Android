@@ -127,7 +127,7 @@ fun PerformanceTestScreen() {
         SurfaceCard(modifier = Modifier.fillMaxWidth()) {
             Column {
                 CardTitle("Benchmark Settings")
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 CardTitle("Workload")
                 EnumDropdown(
                     selected = workload,
@@ -135,9 +135,9 @@ fun PerformanceTestScreen() {
                     itemLabel = { it.title },
                     onSelected = { workload = it }
                 )
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(8.dp))
                 Body(workload.description)
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(8.dp))
                 CardTitle("Backend")
                 EnumDropdown(
                     selected = backend,
@@ -145,7 +145,7 @@ fun PerformanceTestScreen() {
                     itemLabel = { it.title },
                     onSelected = { backend = it }
                 )
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(8.dp))
                 CardTitle("Duration")
                 EnumDropdown(
                     selected = duration,
@@ -153,41 +153,35 @@ fun PerformanceTestScreen() {
                     itemLabel = { it.title },
                     onSelected = { duration = it }
                 )
-                Spacer(Modifier.height(14.dp))
-                MsaaCard(
-                    enabled = msaaEnabled,
-                    onEnabledChange = { enabled ->
+                Spacer(Modifier.height(8.dp))
+                RenderOptionsCard(
+                    msaaEnabled = msaaEnabled,
+                    onMsaaEnabledChange = { enabled ->
                         RenderQualitySettings.setMsaaEnabled(enabled)
                         SharedRendererRegistry.vulkanSession.setMsaaSampleCount(
                             RenderQualitySettings.msaaSampleCount
                         )
+                    },
+                    showPresentMode = backend == BackendType.VULKAN,
+                    presentMode = presentMode,
+                    onPresentModeSelected = { mode ->
+                        VulkanPresentModeSettings.updatePresentMode(mode)
+                        SharedRendererRegistry.vulkanSession.setPresentMode(mode)
+                    },
+                    showValidation = backend == BackendType.VULKAN,
+                    validationEnabled = validationRequested,
+                    onValidationEnabledChange = { enabled ->
+                        VulkanDebugSettings.updateValidationRequested(enabled)
+                        SharedRendererRegistry.vulkanSession.setValidationRequested(enabled)
                     }
                 )
-                if (backend == BackendType.VULKAN) {
-                    Spacer(Modifier.height(14.dp))
-                    VulkanPresentModeCard(
-                        presentMode = presentMode,
-                        onPresentModeSelected = { mode ->
-                            VulkanPresentModeSettings.updatePresentMode(mode)
-                            SharedRendererRegistry.vulkanSession.setPresentMode(mode)
-                        }
-                    )
-                    Spacer(Modifier.height(14.dp))
-                    VulkanValidationCard(
-                        enabled = validationRequested,
-                        onEnabledChange = { enabled ->
-                            VulkanDebugSettings.updateValidationRequested(enabled)
-                            SharedRendererRegistry.vulkanSession.setValidationRequested(enabled)
-                        }
-                    )
-                }
             }
         }
         Spacer(Modifier.height(16.dp))
         SurfaceCard(modifier = Modifier.fillMaxWidth()) {
             Column {
                 CardTitle("Run")
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 Body(
                     if (running) {
                         "Sampling ${workload.title} on ${backend.title} for ${duration.seconds}s. Elapsed: ${elapsedSeconds}s."
@@ -195,7 +189,7 @@ fun PerformanceTestScreen() {
                         "Ready to run ${workload.title} on ${backend.title} for ${duration.seconds}s."
                     }
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !running,
@@ -203,7 +197,7 @@ fun PerformanceTestScreen() {
                 ) {
                     Text("Start Benchmark")
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 OutlinedButton(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = running || samples.isNotEmpty(),
