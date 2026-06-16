@@ -10,9 +10,14 @@ object SharedRendererRegistry {
     val vulkanSession: SharedVulkanRendererSession by lazy {
         SharedVulkanRendererSession()
     }
+    val textureShareSession: SharedVulkanRendererSession by lazy {
+        SharedVulkanRendererSession(BackendType.TEXTURE_SHARE)
+    }
 }
 
-class SharedVulkanRendererSession {
+class SharedVulkanRendererSession(
+    private val backendType: BackendType = BackendType.VULKAN
+) {
     private val renderThread = HandlerThread("SkityVulkanRenderThread").apply { start() }
     private val renderHandler = Handler(renderThread.looper)
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -52,17 +57,15 @@ class SharedVulkanRendererSession {
     @Volatile
     private var renderLoopScheduled = false
 
-    private val frameCallback = object : Choreographer.FrameCallback {
-        override fun doFrame(frameTimeNanos: Long) {
-            frameCallbackScheduled = false
-            if (shouldRender() && framePacingMode == VulkanFramePacingMode.CHOREOGRAPHER) {
-                renderHandler.post {
-                    if (shouldRender() && framePacingMode == VulkanFramePacingMode.CHOREOGRAPHER) {
-                        SkityNative.drawFrame(rendererHandle)
-                    }
+    private val frameCallback = Choreographer.FrameCallback {
+        frameCallbackScheduled = false
+        if (shouldRender() && framePacingMode == VulkanFramePacingMode.CHOREOGRAPHER) {
+            renderHandler.post {
+                if (shouldRender() && framePacingMode == VulkanFramePacingMode.CHOREOGRAPHER) {
+                    SkityNative.drawFrame(rendererHandle)
                 }
-                requestFrame()
             }
+            requestFrame()
         }
     }
 
@@ -182,7 +185,7 @@ class SharedVulkanRendererSession {
     private fun ensureRenderer() {
         if (rendererHandle == 0L) {
             rendererHandle = SkityNative.createRenderer(
-                backend = BackendType.VULKAN,
+                backend = backendType,
                 enableVulkanValidation = validationRequested,
                 vulkanPresentMode = presentMode,
                 vulkanMinImageCount = minImageCount

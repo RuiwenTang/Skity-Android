@@ -24,6 +24,9 @@ class LauncherActivity : ComponentActivity() {
                     },
                     onOpenCapabilityInfo = {
                         startActivity(Intent(this, CapabilityInfoActivity::class.java))
+                    },
+                    onOpenTextureShare = {
+                        startActivity(Intent(this, TextureShareActivity::class.java))
                     }
                 )
             }

@@ -17,6 +17,11 @@
             android:label="@string/title_backend_compare" />
 
         <activity
+            android:name=".TextureShareActivity"
+            android:exported="false"
+            android:label="GL-Vulkan Texture Share" />
+
+        <activity
             android:name=".CapabilityInfoActivity"
             android:exported="false"
             android:label="@string/title_capability_info" />

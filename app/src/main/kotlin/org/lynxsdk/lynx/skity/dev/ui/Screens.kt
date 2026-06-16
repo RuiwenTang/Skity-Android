@@ -60,6 +60,7 @@ import org.lynxsdk.lynx.skity.dev.RenderQualitySettings
 import org.lynxsdk.lynx.skity.dev.SharedRendererRegistry
 import org.lynxsdk.lynx.skity.dev.SkityRenderSurfaceView
 import org.lynxsdk.lynx.skity.dev.SkityNative
+import org.lynxsdk.lynx.skity.dev.SkityTextureShareSurfaceView
 import org.lynxsdk.lynx.skity.dev.SkityVulkanSurfaceView
 import org.lynxsdk.lynx.skity.dev.VulkanDebugSettings
 import org.lynxsdk.lynx.skity.dev.VulkanFramePacingMode
@@ -108,7 +109,8 @@ fun LauncherScreen(
     onOpenSceneGallery: () -> Unit,
     onOpenBackendCompare: () -> Unit,
     onOpenPerformanceTest: () -> Unit,
-    onOpenCapabilityInfo: () -> Unit
+    onOpenCapabilityInfo: () -> Unit,
+    onOpenTextureShare: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -140,6 +142,10 @@ fun LauncherScreen(
         Spacer(Modifier.height(12.dp))
         OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = onOpenCapabilityInfo) {
             Text("Capability Info")
+        }
+        Spacer(Modifier.height(12.dp))
+        Button(modifier = Modifier.fillMaxWidth(), onClick = onOpenTextureShare) {
+            Text("GL-Vulkan Texture Share")
         }
     }
 }
@@ -669,7 +675,7 @@ internal fun ScenePreviewPanel(
             previewHeight = previewHeight,
             onStatsProviderChanged = onStatsProviderChanged
         )
-        BackendType.VULKAN -> if (supportsVulkan) {
+        BackendType.VULKAN, BackendType.TEXTURE_SHARE -> if (supportsVulkan) {
             VulkanPreviewPanel(
                 scene = scene,
                 previewHeight = previewHeight,
@@ -894,5 +900,102 @@ internal fun <T> EnumDropdown(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun TextureShareScreen() {
+    val context = LocalContext.current
+    @Suppress("DEPRECATION")
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val view = remember {
+        SkityTextureShareSurfaceView(context)
+    }
+
+    val validationRequested = VulkanDebugSettings.validationRequested
+    val msaaEnabled = RenderQualitySettings.isMsaaEnabled()
+    val presentMode = VulkanPresentModeSettings.presentMode
+    val minImageCount = VulkanMinImageCountSettings.minImageCount
+    val framePacingMode = VulkanFramePacingSettings.mode
+
+    DisposableEffect(view, lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> view.onResumeRendering()
+                Lifecycle.Event.ON_PAUSE -> view.onPauseRendering()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            view.onPauseRendering()
+            view.release()
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(ScreenPadding)
+    ) {
+        Headline("GL-Vulkan Texture Share")
+        Body("OpenGL ES renders an animated triangle into an AHardwareBuffer, which is imported as a Vulkan texture via skity's WrapTexture API and drawn to the swapchain.")
+        Spacer(Modifier.height(SectionSpacing))
+        SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+            Column {
+                CardTitle("Sharing Pipeline")
+                Body("GL (offscreen FBO) → AHardwareBuffer → skity WrapTexture → Vulkan texture → Canvas DrawImageRect → Swapchain")
+            }
+        }
+        Spacer(Modifier.height(CardSpacing))
+        RenderOptionsCard(
+            msaaEnabled = msaaEnabled,
+            onMsaaEnabledChange = { enabled ->
+                RenderQualitySettings.setMsaaEnabled(enabled)
+                SharedRendererRegistry.textureShareSession.setMsaaSampleCount(
+                    RenderQualitySettings.msaaSampleCount
+                )
+            },
+            showMinImageCount = true,
+            minImageCount = minImageCount,
+            onMinImageCountSelected = { count ->
+                VulkanMinImageCountSettings.updateMinImageCount(count)
+                SharedRendererRegistry.textureShareSession.setMinImageCount(count.imageCount)
+            },
+            showFramePacing = true,
+            framePacingMode = framePacingMode,
+            onFramePacingModeSelected = { mode ->
+                VulkanFramePacingSettings.updateMode(mode)
+                SharedRendererRegistry.textureShareSession.setFramePacingMode(mode)
+            },
+            showPresentMode = true,
+            presentMode = presentMode,
+            onPresentModeSelected = { mode ->
+                VulkanPresentModeSettings.updatePresentMode(mode)
+                SharedRendererRegistry.textureShareSession.setPresentMode(mode)
+            },
+            showValidation = true,
+            validationEnabled = validationRequested,
+            onValidationEnabledChange = { enabled ->
+                VulkanDebugSettings.updateValidationRequested(enabled)
+                SharedRendererRegistry.textureShareSession.setValidationRequested(enabled)
+            }
+        )
+        Spacer(Modifier.height(SectionSpacing))
+        SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(380.dp),
+                factory = { view }
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        GpuInfoOverlay(
+            statsProvider = { view.getOverlayDetails() }
+        )
     }
 }

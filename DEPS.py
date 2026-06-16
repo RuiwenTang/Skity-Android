@@ -3,8 +3,8 @@ import os
 deps = {
   "externals/skity": {
     "type": "solution",
-    "url": "git@github.com:RuiwenTang/skity-dev.git",
-    "branch": "wgx_spirv_impl",
+    "url": "git@github.com:lynx-family/skity.git",
+    "branch": "main",
     "ignore_in_git": True,
     "deps_file": "hab/DEPS",
   },

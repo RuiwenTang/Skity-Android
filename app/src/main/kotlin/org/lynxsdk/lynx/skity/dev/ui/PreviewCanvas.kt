@@ -95,15 +95,18 @@ fun PreviewCanvas(
                 BackendType.VULKAN -> "Vulkan"
                 BackendType.GLES -> "OpenGL ES"
                 BackendType.AUTO -> "Auto"
+                BackendType.TEXTURE_SHARE -> "GL-VK Share"
             }
             val surfaceLabel = when (backend) {
                 BackendType.VULKAN -> "Swapchain"
                 BackendType.GLES -> "Framebuffer"
                 BackendType.AUTO -> "Auto"
+                BackendType.TEXTURE_SHARE -> "Swapchain"
             }
             val validationLabel = when (backend) {
                 BackendType.VULKAN -> "Requested"
                 BackendType.GLES, BackendType.AUTO -> "Off"
+                BackendType.TEXTURE_SHARE -> "Off"
             }
 
             Text(

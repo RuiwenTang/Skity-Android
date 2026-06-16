@@ -35,7 +35,8 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     gles/gl_proc_resolver.cpp
     gles/gles_render_backend.cpp
     vulkan/vulkan_probe.cpp
-    vulkan/vulkan_render_backend.cpp)
+    vulkan/vulkan_render_backend.cpp
+    texture_share/texture_share_backend.cpp)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR})

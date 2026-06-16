@@ -195,8 +195,7 @@ bool VulkanRenderBackend::EnsureNativeWindow() {
 
   native_window_ = skity::CreateGPUNativeWindowVK(context_.get(), &info);
   if (native_window_ != nullptr && native_window_->GetPresenter() != nullptr) {
-    diagnostics_.SetSurfaceImageCount(
-        native_window_->GetPresenter()->GetImageCount());
+    diagnostics_.SetSurfaceImageCount(min_image_count_);
     diagnostics_.SetPresentModeActual(
         native_window_->GetPresenter()->GetPresentMode());
   } else {
