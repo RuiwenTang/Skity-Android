@@ -19,5 +19,6 @@ enum class DemoScene(val title: String, val description: String) {
     STRESS_PATHS("Stress Paths", "Many repeated path fills and strokes for heavier vector load."),
     DASHBOARD("Dashboard Cards", "Card-style panels, mini charts, and mixed typography blocks."),
     ICON_LIST("Icon List", "Repeated icon-and-label rows for UI list composition checks."),
-    COMPOSITE_STACK("Composite Stack", "Clip, stroke, transform, and layered overlap in one combined scene.")
+    COMPOSITE_STACK("Composite Stack", "Clip, stroke, transform, and layered overlap in one combined scene."),
+    ADVANCED_BLENDING("Advanced Blend", "Advanced blend equations (Screen/Overlay/Multiply/HSL…) driven by GL_KHR_blend_equation_advanced / VK_EXT_blend_operation_advanced.")
 }

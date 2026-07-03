@@ -62,6 +62,7 @@ fun PreviewCanvas(
                 DemoScene.DASHBOARD -> drawDashboardScene()
                 DemoScene.ICON_LIST -> drawIconListScene()
                 DemoScene.COMPOSITE_STACK -> drawCompositeStackScene()
+                DemoScene.ADVANCED_BLENDING -> drawAdvancedBlendingScene()
             }
 
             drawRoundRect(
@@ -737,6 +738,38 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCompositeStackS
         center = Offset(size.width * 0.74f, size.height * 0.68f),
         alpha = 0.45f
     )
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawAdvancedBlendingScene() {
+    val left = size.width * 0.08f
+    val top = size.height * 0.16f
+    val cols = 4
+    val rows = 4
+    val gap = 3.dp.toPx()
+    val cellW = (size.width * 0.84f - gap * (cols - 1)) / cols
+    val cellH = (size.height * 0.76f - gap * (rows - 1)) / rows
+    val dstColors = listOf(
+        Color(0xFFEDEC56), Color(0xFFEA384D),
+        Color(0xFF3366EA), Color(0xFF0D0D1A)
+    )
+    for (row in 0 until rows) {
+        for (col in 0 until cols) {
+            val x = left + col * (cellW + gap)
+            val y = top + row * (cellH + gap)
+            // Destination band (bright -> dark) approximating the native scene.
+            drawRect(
+                brush = Brush.linearGradient(dstColors),
+                topLeft = Offset(x, y),
+                size = Size(cellW, cellH)
+            )
+            // Source overlay approximating the advanced-blended source rect.
+            drawRect(
+                color = Color(0xD014B8A6),
+                topLeft = Offset(x + cellW * 0.30f, y + cellH * 0.30f),
+                size = Size(cellW * 0.70f, cellH * 0.70f)
+            )
+        }
+    }
 }
 
 @Composable

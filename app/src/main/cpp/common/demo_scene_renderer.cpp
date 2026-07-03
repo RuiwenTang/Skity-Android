@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
+#include <skity/effect/shader.hpp>
 #include <skity/graphic/color.hpp>
 #include <skity/graphic/paint.hpp>
 #include <skity/graphic/path.hpp>
@@ -608,6 +610,136 @@ void DrawCompositeStackScene(Canvas* canvas, int width, int height) {
   canvas->Restore();
 }
 
+struct AdvancedBlendEntry {
+  BlendMode mode;
+  const char* name;
+};
+
+// The 15 advanced blend modes that have a fixed-function hardware equivalent
+// (see skity ToNativeBlendOp; kModulate has none and stays on the shader path),
+// followed by kSrcOver as a standard alpha-compositing reference so the per-mode
+// difference is easy to compare. Name strings match skity's blend_mode_name().
+const std::vector<AdvancedBlendEntry>& AdvancedBlendEntries() {
+  static const std::vector<AdvancedBlendEntry> entries = {
+      {BlendMode::kScreen, "Screen"},
+      {BlendMode::kOverlay, "Overlay"},
+      {BlendMode::kDarken, "Darken"},
+      {BlendMode::kLighten, "Lighten"},
+      {BlendMode::kColorDodge, "ColorDodge"},
+      {BlendMode::kColorBurn, "ColorBurn"},
+      {BlendMode::kHardLight, "HardLight"},
+      {BlendMode::kSoftLight, "SoftLight"},
+      {BlendMode::kDifference, "Difference"},
+      {BlendMode::kExclusion, "Exclusion"},
+      {BlendMode::kMultiply, "Multiply"},
+      {BlendMode::kHue, "Hue"},
+      {BlendMode::kSaturation, "Saturation"},
+      {BlendMode::kColor, "Color"},
+      {BlendMode::kLuminosity, "Luminosity"},
+      {BlendMode::kSrcOver, "SrcOver"},
+  };
+  return entries;
+}
+
+void DrawAdvancedBlendingScene(Canvas* canvas, int width, int height) {
+  Paint title;
+  title.SetAntiAlias(true);
+  title.SetColor(Color_WHITE);
+  title.SetTextSize(width * 0.045f);
+  canvas->DrawSimpleText2("Advanced Blend Equations", width * 0.04f,
+                          height * 0.065f, title);
+
+  Paint subtitle;
+  subtitle.SetAntiAlias(true);
+  subtitle.SetColor(Argb(0xFF, 0x9A, 0xA6, 0xC2));
+  subtitle.SetTextSize(width * 0.026f);
+  canvas->DrawSimpleText2(
+      "GL_KHR_blend_equation_advanced  ·  VK_EXT_blend_operation_advanced",
+      width * 0.04f, height * 0.105f, subtitle);
+
+  const auto& entries = AdvancedBlendEntries();
+  constexpr int kCols = 4;
+  constexpr int kRows = 4;
+  const float grid_left = width * 0.03f;
+  const float grid_right = width * 0.97f;
+  const float grid_top = height * 0.14f;
+  const float grid_bottom = height * 0.99f;
+  const float cell_w = (grid_right - grid_left) / kCols;
+  const float cell_h = (grid_bottom - grid_top) / kRows;
+  const float gap = (cell_w < cell_h ? cell_w : cell_h) * 0.04f;
+
+  // Destination band covers bright -> saturated -> dark so both the separable
+  // equations (Overlay/Dodge/...) and the HSL equations (Hue/Color/...) produce
+  // visibly different results across the tile.
+  const Vec4 dst_colors[] = {
+      Vec4{1.00f, 0.93f, 0.35f, 1.f},
+      Vec4{0.92f, 0.22f, 0.30f, 1.f},
+      Vec4{0.20f, 0.40f, 0.92f, 1.f},
+      Vec4{0.05f, 0.05f, 0.10f, 1.f},
+  };
+
+  for (int index = 0; index < static_cast<int>(entries.size()); ++index) {
+    const int col = index % kCols;
+    const int row = index / kCols;
+    const float cell_left = grid_left + col * cell_w;
+    const float cell_top = grid_top + row * cell_h;
+    const Rect tile =
+        MakeRect(cell_left + gap, cell_top + gap, cell_left + cell_w - gap,
+                 cell_top + cell_h - gap);
+    const float tile_left = tile.Left();
+    const float tile_top = tile.Top();
+    const float tile_w = tile.Width();
+    const float tile_h = tile.Height();
+
+    // Destination: horizontal multi-stop gradient filling the tile.
+    Point pts[2] = {
+        Point{tile_left, tile_top, 0.f, 1.f},
+        Point{tile_left + tile_w, tile_top, 0.f, 1.f},
+    };
+    Paint dst_paint;
+    dst_paint.SetAntiAlias(true);
+    dst_paint.SetBlendMode(BlendMode::kSrc);
+    dst_paint.SetShader(Shader::MakeLinear(pts, dst_colors, nullptr, 4));
+    canvas->DrawRect(tile, dst_paint);
+
+    // Source: translucent teal rect covering the bottom-right ~70% of the tile,
+    // blended with the current advanced equation. The top-left keeps the raw
+    // destination so each equation reads clearly against the source color.
+    const float src_dx = tile_w * 0.30f;
+    const float src_dy = tile_h * 0.30f;
+    Paint src_paint;
+    src_paint.SetAntiAlias(true);
+    src_paint.SetColor(Argb(0xD0, 0x14, 0xB8, 0xA6));
+    src_paint.SetBlendMode(entries[index].mode);
+    canvas->DrawRect(
+        MakeRect(tile_left + src_dx, tile_top + src_dy, tile_left + tile_w,
+                 tile_top + tile_h),
+        src_paint);
+
+    // Label: translucent dark chip + white text at the top-left corner.
+    const float text_size = (cell_w < cell_h ? cell_w : cell_h) * 0.075f;
+    const float pad = text_size * 0.5f;
+    const float chip_w = tile_w * 0.86f;
+    const float chip_h = text_size * 1.9f;
+    Paint chip;
+    chip.SetAntiAlias(true);
+    chip.SetColor(Argb(0xB0, 0x0B, 0x13, 0x2B));
+    chip.SetBlendMode(BlendMode::kSrcOver);
+    canvas->DrawRoundRect(
+        MakeRect(tile_left + pad, tile_top + pad, tile_left + pad + chip_w,
+                 tile_top + pad + chip_h),
+        chip_h * 0.3f, chip_h * 0.3f, chip);
+
+    Paint label;
+    label.SetAntiAlias(true);
+    label.SetColor(Color_WHITE);
+    label.SetBlendMode(BlendMode::kSrcOver);
+    label.SetTextSize(text_size);
+    canvas->DrawSimpleText2(entries[index].name, tile_left + pad * 1.8f,
+                            tile_top + pad + chip_h * 0.7f, label);
+  }
+}
+
 }  // namespace
 
 void DrawDemoScene(Canvas* canvas, DemoScene scene, DemoBackend backend,
@@ -671,6 +803,9 @@ void DrawDemoScene(Canvas* canvas, DemoScene scene, DemoBackend backend,
       break;
     case DemoScene::kCompositeStack:
       DrawCompositeStackScene(canvas, width, height);
+      break;
+    case DemoScene::kAdvancedBlending:
+      DrawAdvancedBlendingScene(canvas, width, height);
       break;
   }
 }

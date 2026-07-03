@@ -28,6 +28,7 @@ enum class DemoScene {
   kDashboard = 16,
   kIconList = 17,
   kCompositeStack = 18,
+  kAdvancedBlending = 19,
 };
 
 }  // namespace skity::demo
